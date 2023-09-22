@@ -1,5 +1,11 @@
 package conversation
 
+// The conversation controller orchestrates the incoming audio, sends it
+// to the audio processor to be transcribed, then fetches the conversation
+// rules and combines those with the transcription to send to the 
+// LLM controller to determine a response. The response is then sent to the audio
+// processor to be converted to audio and sent back to the caller.
+
 import (
 	"log"
 

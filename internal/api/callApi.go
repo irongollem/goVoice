@@ -2,7 +2,7 @@ package api
 
 import (
 	"goVoice/internal/config"
-	"net/http"
+	"goVoice/pkg/audio/plivo"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,12 +21,8 @@ func NewVoiceAPI(cfg *config.Config) *VoiceAPI {
 func (api *VoiceAPI) routes() {
 	voiceRoutes := api.Router.Group("/voice")
 	{
-		voiceRoutes.GET("/", api.HandleRoot)
+		voiceRoutes.GET("/start_stream", plivo.StartStream)
+		voiceRoutes.GET("/ws", plivo.StartStreamSocket)
 	}
 }
 
-func (api *VoiceAPI) HandleRoot(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Hello from VoiceAPI",
-	})
-}
