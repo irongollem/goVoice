@@ -17,7 +17,7 @@ type Telnyx struct {
 func NewTelnyxClient(apiKey string, apiUrl string, convCtrl *conversation.Controller) *Telnyx {
 	return &Telnyx{
 		APIKey:      apiKey,
-		CommandPath: apiUrl + "/calls/",
+		CommandPath: apiUrl + "/call/",
 		ConvCtrl:    convCtrl,
 	}
 }
