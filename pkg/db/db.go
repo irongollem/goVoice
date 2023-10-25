@@ -3,15 +3,18 @@ package db
 import (
 	"context"
 	"goVoice/internal/config"
+	"goVoice/internal/models"
+	"goVoice/pkg/db/firestore"
 )
 
-
-
 type DbProvider interface {
-	GetDoc(ctx context.Context, rulesetId string) (*Ruleset, error)
+	GetRuleSet(ctx *context.Context, rulesetId string) (*models.ConversationRuleSet, error)
 }
 
-func NewDbHandler(cfg *config.Config) (*DbProvider, error) {
-	newFirestoreHandler, err := NewFirestoreHandler(cfg)
-	return newFirestoreHandler, err
+func InitiateDBClient(cfg *config.Config) (DbProvider, error) {
+	provider, err := firestore.NewClient(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return provider, nil
 }

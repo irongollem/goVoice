@@ -13,6 +13,7 @@ type Config struct {
 	TelnyxAPIKey       string
 	TelnyxAPIUrl       string
 	GCPCredentialsFile string
+	GCPProjectID       string
 	SendgridAPIKey     string
 }
 
@@ -29,6 +30,7 @@ func LoadConfig() (*Config, error) {
 		TelnyxAPIKey:       os.Getenv("TELNYX_API_KEY"),
 		TelnyxAPIUrl:       os.Getenv("TELNYX_API_URL"),
 		GCPCredentialsFile: os.Getenv("GCP_CREDENTIALS_FILE"),
+		GCPProjectID:       os.Getenv("GCP_PROJECT_ID"),
 		SendgridAPIKey:     os.Getenv("SENDGRID_API_KEY"),
 	}, nil
 }

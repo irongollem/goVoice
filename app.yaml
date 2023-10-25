@@ -1,0 +1,11 @@
+runtime: go121
+
+main: ./cmd/server
+
+runtime_config:
+  gce_metadata_path: /app/gce_metadata
+
+handlers:
+- url: /.*
+  script: auto
+  secure: always

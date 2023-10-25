@@ -15,7 +15,7 @@ type VoiceAPI struct {
 	Router  *gin.Engine
 }
 
-func NewVoiceAPI(cfg *config.Config, storage *storage.StorageProvider, db *db.DbProvider) *VoiceAPI {
+func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbProvider) *VoiceAPI {
 	ginEngine := gin.Default()
 	api := &VoiceAPI{Router: ginEngine}
 

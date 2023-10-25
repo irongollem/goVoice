@@ -2,6 +2,7 @@ package conversation
 
 import (
 	"encoding/json"
+	"goVoice/internal/models"
 	"goVoice/pkg/audio"
 	"goVoice/pkg/db"
 	"goVoice/pkg/storage"
@@ -17,8 +18,8 @@ import (
 // processor to be converted to audio and sent back to the caller.
 type Controller struct {
 	Provider audio.CallProvider
-	Storage  *storage.StorageProvider
-	DB       *db.DbProvider
+	Storage  storage.StorageProvider
+	DB       db.DbProvider
 }
 
 func (c *Controller) StartConversation(callId string) {
@@ -82,32 +83,32 @@ func (c *Controller) ProcessTranscription(callId string, transcript string, clie
 	}
 }
 
-func (c *Controller) getRules(callId string) (ConversationRuleSet, error) {
+func (c *Controller) getRules(callId string) (models.ConversationRuleSet, error) {
 	//  after pilot we should actually fetch this
 	file, err := os.Open("pilot.json")
 	if err != nil {
 		log.Printf("Error opening pilot.json file: %v", err)
-		return ConversationRuleSet{}, err
+		return models.ConversationRuleSet{}, err
 	}
 	defer file.Close()
 
 	byteValue, err := io.ReadAll(file)
 	if err != nil {
 		log.Printf("Error reading pilot.json file: %v", err)
-		return ConversationRuleSet{}, err
+		return models.ConversationRuleSet{}, err
 	}
 
-	var ruleSet ConversationRuleSet
+	var ruleSet models.ConversationRuleSet
 	err = json.Unmarshal(byteValue, &ruleSet)
 	if err != nil {
 		log.Printf("Error unmarshalling pilot.json file: %v", err)
-		return ConversationRuleSet{}, err
+		return models.ConversationRuleSet{}, err
 	}
 
 	return ruleSet, nil
 }
 
-func (c *Controller) getResponse(rules ConversationRuleSet, state *ClientState, transcript string) (ConversationStep, error) {
+func (c *Controller) getResponse(rules models.ConversationRuleSet, state *ClientState, transcript string) (models.ConversationStep, error) {
 	if rules.Simple {
 		return getSimpleResponse(rules, state), nil
 	} else {
@@ -116,11 +117,11 @@ func (c *Controller) getResponse(rules ConversationRuleSet, state *ClientState, 
 }
 
 // get a response using an LLM
-func getAdvancedResponse(rules ConversationRuleSet, state *ClientState, transcript string) (ConversationStep, error) {
+func getAdvancedResponse(rules models.ConversationRuleSet, state *ClientState, transcript string) (models.ConversationStep, error) {
 	panic("unimplemented")
 }
 
 // get a response using a simple call script
-func getSimpleResponse(rules ConversationRuleSet, state *ClientState) ConversationStep {
+func getSimpleResponse(rules models.ConversationRuleSet, state *ClientState) models.ConversationStep {
 	return rules.Steps[state.Index+1]
 }

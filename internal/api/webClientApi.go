@@ -11,11 +11,11 @@ import (
 
 type WebClientAPI struct {
 	Router  *gin.Engine
-	storage *storage.StorageProvider
-	db      *db.DbProvider
+	storage storage.StorageProvider
+	db      db.DbProvider
 }
 
-func NewWebClientAPI(cfg *config.Config, storageHandler *storage.StorageProvider, dbHandler *db.DbProvider) *WebClientAPI {
+func NewWebClientAPI(cfg *config.Config, storageHandler storage.StorageProvider, dbHandler db.DbProvider) *WebClientAPI {
 	ginEngine := gin.Default()
 	api := &WebClientAPI{Router: ginEngine, storage: storageHandler, db: dbHandler}
 	api.routes()

@@ -3,6 +3,7 @@ package conversation
 import (
 	"encoding/base64"
 	"encoding/json"
+	"goVoice/internal/models"
 	"log"
 )
 
@@ -31,7 +32,7 @@ func JSONToClientState(clientState *string) *ClientState {
 
 // ClientStateToJSON encodes the given ConversationStep pointer and returns a base64-encoded string pointer.
 // If the step is nil or encoding fails, it returns nil.
-func ClientStateToJSON(step *ConversationStep, stepIndex int) *string {
+func ClientStateToJSON(step *models.ConversationStep, stepIndex int) *string {
 	if step == nil {
 		return nil
 	}
