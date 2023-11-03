@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"goVoice/internal/models"
 	"log"
 	"math"
 	"net/http"
@@ -120,16 +121,18 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
-func (t *Telnyx) SpeakText(callId string, text string, clientState *string) (chan bool, chan error) {
+func (t *Telnyx) SpeakText(callId string, text string, clientState *models.ClientState) (chan bool, chan error) {
 	done := make(chan bool)
 	errChan := make(chan error, 1)
+
+	state, _ := encodeClientState(clientState)
 
 	speakPayload := CommandPayload{
 		CommandId:   "speak-1", // TODO make sure this if fine
 		Language:    "nl-NL",
 		Voice:       "male",
 		Payload:     text,
-		ClientState: *clientState,
+		ClientState: state,
 	}
 
 	go func() {

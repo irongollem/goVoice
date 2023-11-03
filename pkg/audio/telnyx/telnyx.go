@@ -35,7 +35,7 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 		return
 	}
 
-	callType := event.EventType
+	callType := event.EventType       
 
 	switch callType {
 	case "call.initiated":
@@ -43,7 +43,7 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 	case "call.answered":
 		t.startCallProcedure(c, event)
 	case "call.hangup":
-		c.AbortWithStatus(http.StatusNotFound)
+		t.hangupProcedure(c, event)
 	case "call.speak.ended":
 		c.AbortWithStatus(http.StatusNotFound)
 	case "call.speak.started":
@@ -51,9 +51,9 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 	case "call.recording.saved":
 		c.AbortWithStatus(http.StatusNotFound)
 	case "call.transcription":
-		t.onTranscriptionProcedure(c, event)
-		// When a call is answered using a socket, its content will be streamed
+		t.transcriptionProcedure(c, event)
 	case "streaming.started":
+		// When a call is answered using a socket, its content will be streamed
 		c.AbortWithStatus(http.StatusNotFound)
 	case "streaming.stopped":
 		c.AbortWithStatus(http.StatusNotFound)

@@ -1,0 +1,17 @@
+steps:
+  - name: "gcr.io/cloud-builders/go"
+    args: ["install", "."]
+  - name: "gcr.io/cloud-builders/go"
+    args: ["build", "cmd/server"]
+    env:
+      [
+        "TELNYX_API_URL=${_TELNYX_API_URL}",
+        "TELNYX_API_KEY=${_TELNYX_API_KEY}",
+        "TELNYX_PUBLIC_KEY=${_TELNYX_PUBLIC_KEY}",
+        "TELNYX_PHONE_NUMBER=${_TELNYX_PHONE_NUMBER}",
+        "GCP_CREDENTIALS_FILE=${_GCP_CREDENTIALS_FILE}",
+        "GCP_PROJECT_ID=${_GCP_PROJECT_ID}",
+        "SENDGRID_API_KEY=${_SENDGRID_API_KEY}",
+      ]
+  - name: "gcr.io/cloud-builders/gcloud"
+    args: ["app", "deploy"]

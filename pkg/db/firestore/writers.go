@@ -3,20 +3,32 @@ package firestore
 import (
 	"context"
 	"goVoice/internal/models"
+
+	"cloud.google.com/go/firestore"
 )
 
-// WriteResponseToConversation writes a conversation step response to Firestore.
-// It takes a context, rulesetId, conversationId, and a pointer to a ConversationStepResponse struct as input.
-// It returns an error if the write operation fails.
-func (f *FirestoreClient) WriteResponseToConversation(ctx *context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error {
+func (f *FirestoreClient) AddConversation(ctx context.Context, rulesetId string, conversation *models.Conversation) error {
+	_, err := f.Client.Collection("rulesets").
+		Doc(rulesetId).
+		Collection("conversations").
+		Doc(conversation.ID).
+		Set(ctx, conversation)
+		
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *FirestoreClient) AddResponse(ctx context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error {
 	_, err := f.Client.Collection("rulesets").
 		Doc(rulesetId).
 		Collection("conversations").
 		Doc(conversationId).
-		Collection("responses").
-		NewDoc().
-		Create(*ctx, response)
-
+		Update(ctx, []firestore.Update{
+			{Path: "responses." + response.Purpose, Value: response.Response},
+		})
+		
 	if err != nil {
 		return err
 	}

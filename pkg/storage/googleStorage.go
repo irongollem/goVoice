@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"goVoice/internal/config"
 	"io"
 	"log"
@@ -10,7 +11,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/option"
-	"google.golang.org/appengine"
 )
 
 type GoogleStorageHandler struct {
@@ -38,10 +38,15 @@ func NewGoogleStorageHandler(cfg *config.Config) (*GoogleStorageHandler, error) 
 	}, nil
 }
 
-func (h *GoogleStorageHandler) UploadFile(c *gin.Context, filename string, file io.Reader) error {
-	ctx := appengine.NewContext(c.Request)
+func (h *GoogleStorageHandler) GetRecording(ctx context.Context, rulesetId string, callId string) (io.ReadCloser, error) {
+	h.DownloadFile(ctx, fmt.Sprintf("recording-%s-%s", rulesetId, callId))
+	return nil, nil
+}
+
+func (h *GoogleStorageHandler) UploadFile(ctx context.Context, filename string, file io.Reader) error {
 	sw := h.client.Bucket(h.bucket).Object(filename).NewWriter(ctx)
 	if _, err := io.Copy(sw, file); err != nil {
+		log.Printf("Error uploading file to Google Cloud Storage: %v", err)
 		return err
 	}
 	if err := sw.Close(); err != nil {
@@ -50,16 +55,18 @@ func (h *GoogleStorageHandler) UploadFile(c *gin.Context, filename string, file 
 	return nil
 }
 
-func (h *GoogleStorageHandler) DownloadFile(c *gin.Context, filename string) (io.ReadCloser, error) {
-	rc, err := h.client.Bucket(h.bucket).Object(filename).NewReader(c)
+func (h *GoogleStorageHandler) DownloadFile(ctx context.Context, filename string) (io.ReadCloser, error) {
+	reader, err := h.client.Bucket(h.bucket).Object(filename).NewReader(ctx)
 	if err != nil {
+		log.Printf("Error downloading file from Google Cloud Storage: %v", err)
 		return nil, err
 	}
-	return rc, nil
+	return reader, nil
 }
 
 func (h *GoogleStorageHandler) DeleteFile(c *gin.Context, filename string) error {
 	if err := h.client.Bucket(h.bucket).Object(filename).Delete(c); err != nil {
+		log.Printf("Error deleting file from Google Cloud Storage: %v", err)
 		return err
 	}
 	return nil

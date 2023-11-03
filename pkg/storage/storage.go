@@ -1,21 +1,21 @@
 package storage
 
 import (
+	"context"
 	"goVoice/internal/config"
 
 	"io"
-
-	"github.com/gin-gonic/gin"
 )
 
 type StorageProvider interface {
-	UploadFile(ctx *gin.Context, filename string, file io.Reader) error
-	DownloadFile(ctx *gin.Context, filename string) (io.ReadCloser, error)
-	DeleteFile(ctx *gin.Context, filename string) error
+	// UploadFile(ctx *gin.Context, filename string, file io.Reader) error
+	// DownloadFile(ctx *gin.Context, filename string) (io.ReadCloser, error)
+	// DeleteFile(ctx *gin.Context, filename string) error
+	GetRecording(ctx context.Context, rulesetId string, callId string) (io.ReadCloser, error)
 }
 
 func NewStorageHandler(cfg *config.Config) (StorageProvider, error) {
-	googleProvider, _ := NewGoogleStorageHandler(cfg)
+	provider, _ := NewGoogleStorageHandler(cfg)
 
-	return googleProvider, nil
+	return provider, nil
 }

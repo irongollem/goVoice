@@ -16,18 +16,18 @@ type Event struct {
 	ID         string `json:"id"`
 	OccurredAt string `json:"occurred_at"`
 	Payload    struct {
-		CallControlID     string `json:"call_control_id"`
-		CallLegID         string `json:"call_leg_id"`
-		CallSessionID     string `json:"call_session_id"`
-		ClientState       string `json:"client_state"`
-		ConnectionID      string `json:"connection_id"`
-		TranscriptionData TranscriptionData  `json:"transcription_data"`
-		CustomHeaders []Header `json:"custom_headers"`
-		Direction     string   `json:"direction"`
-		From          string   `json:"from"`
-		State         string   `json:"state"`
-		StartTime     string   `json:"start_time"`
-		To            string   `json:"to"`
+		CallControlID     string            `json:"call_control_id"`
+		CallLegID         string            `json:"call_leg_id"`
+		CallSessionID     string            `json:"call_session_id"`
+		ClientState       string            `json:"client_state"`
+		ConnectionID      string            `json:"connection_id"`
+		TranscriptionData TranscriptionData `json:"transcription_data"`
+		CustomHeaders     []Header          `json:"custom_headers"`
+		Direction         string            `json:"direction"`
+		From              string            `json:"from"`
+		State             string            `json:"state"`
+		StartTime         string            `json:"start_time"`
+		To                string            `json:"to"`
 	} `json:"payload"`
 	RecordType string `json:"record_type"`
 	Meta       struct {

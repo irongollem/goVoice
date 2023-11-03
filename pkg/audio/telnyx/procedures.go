@@ -1,6 +1,7 @@
 package telnyx
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -33,16 +34,32 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	t.ConvCtrl.StartConversation(event.Payload.CallControlID) // TODO: check if callControlId is the correct one
 }
 
-func (t *Telnyx) onTranscriptionProcedure(c *gin.Context, event Event) {
+func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	ctx := c.Request.Context()
 
 	transcriptionData := event.Payload.TranscriptionData
 	callId := event.Payload.CallControlID
-	clientState := event.Payload.ClientState
-	
-	// await response from conversation engine
-	t.ConvCtrl.ProcessTranscription(callId, transcriptionData.Transcript, clientState)
-	// send response to telnyx text to speech
+	state, err := decodeClientState(event.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v", err)
+	}
 
+	t.ConvCtrl.ProcessTranscription(ctx, callId, transcriptionData.Transcript, state)
+}
+
+func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
+	// respond to the incoming hook immediately
+	c.Status(http.StatusOK)
+
+	callId := event.Payload.CallControlID
+	state, err := decodeClientState(event.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v", err)
+	}
+
+	ctx := c.Request.Context()
+
+	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callId)
 }
