@@ -12,7 +12,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 )
 
 // The conversation controller orchestrates the incoming audio, sends it
@@ -141,13 +140,6 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 }
 
 func (c *Controller) EndConversation(ctx context.Context, rulesetId string, callId string) error {
-	// Get the stored responses from the database
-	responses, err := c.DB.GetResponses(ctx, rulesetId, callId)
-	if err != nil {
-		log.Printf("Error getting responses from database: %v", err)
-		return err
-	}
-
 	// Get the recording or a link to it from the storage provider
 	reader, err := c.Storage.GetRecording(ctx, rulesetId, callId)
 	if err != nil {
@@ -161,6 +153,7 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 		log.Printf("Error reading recording from storage: %v", err)
 		return err
 	}
+	filename := fmt.Sprintf("recording-%s-%s.mp3", rulesetId, callId)
 
 	ruleset, err := c.DB.GetRuleSet(ctx, rulesetId)
 	if err != nil {
@@ -168,10 +161,9 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 		return err
 	}
 
-	body := formatEmailBody(responses, rulesetId, ruleset.Title, callId)
+	c.retrieveResponsesAsTable(ctx, ruleset, callId)
 
-	// send the data to sendgrid to be emailed to the client
-	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, recording)
+	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, recording, filename)
 	if err != nil {
 		log.Printf("Error sending email: %v", err)
 		return err
@@ -180,10 +172,3 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 	return nil
 }
 
-func formatEmailBody(responses []models.ConversationStepResponse, rulesetID string, rulesetTitle string, callID string) string {
-	var sb strings.Builder
-	for _, response := range responses {
-		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\n", rulesetID, rulesetTitle, callID, response.Purpose, response.Response))
-	}
-	return sb.String()
-}
