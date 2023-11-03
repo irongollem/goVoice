@@ -15,6 +15,7 @@ type Config struct {
 	GCPCredentialsFile string
 	GCPProjectID       string
 	SendgridAPIKey     string
+	EmailPassword			 string
 }
 
 func LoadConfig() (*Config, error) {
@@ -32,5 +33,6 @@ func LoadConfig() (*Config, error) {
 		GCPCredentialsFile: os.Getenv("GCP_CREDENTIALS_FILE"),
 		GCPProjectID:       os.Getenv("GCP_PROJECT_ID"),
 		SendgridAPIKey:     os.Getenv("SENDGRID_API_KEY"),
+		EmailPassword:      os.Getenv("EMAIL_PASSWORD"),
 	}, nil
 }

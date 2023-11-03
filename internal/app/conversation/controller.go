@@ -3,14 +3,16 @@ package conversation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"goVoice/internal/email"
 	"goVoice/internal/models"
 	"goVoice/pkg/audio"
 	"goVoice/pkg/db"
-	"goVoice/pkg/email"
 	"goVoice/pkg/storage"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 // The conversation controller orchestrates the incoming audio, sends it
@@ -35,7 +37,7 @@ func (c *Controller) StartConversation(callId string) {
 	// Grab the first step as conversation opener
 	opener := conv.Steps[0]
 	clientState := &models.ClientState{
-		RulesetID: callId,
+		RulesetID:   callId,
 		CurrentStep: 0,
 	}
 
@@ -57,7 +59,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callId string, tr
 	}
 
 	// in case people are still talking after the conversation is over
-	wasFinalStep := len(rules.Steps) == state.CurrentStep - 1
+	wasFinalStep := len(rules.Steps) == state.CurrentStep-1
 	if wasFinalStep {
 		done, errChan := c.Provider.EndCall(callId)
 		select {
@@ -69,7 +71,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callId string, tr
 		}
 	}
 
-	c.storeTranscription(ctx, callId, state, rules,transcript)
+	c.storeTranscription(ctx, callId, state, rules, transcript)
 
 	// combine transcription with conversation rules
 	step, err := c.getResponse(rules, state, transcript)
@@ -80,7 +82,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callId string, tr
 	}
 
 	nextState := models.ClientState{
-		RulesetID: callId,
+		RulesetID:   callId,
 		CurrentStep: state.CurrentStep + 1,
 	}
 	done, errChan := c.Provider.SpeakText(callId, step.Text, &nextState)
@@ -147,14 +149,41 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 	}
 
 	// Get the recording or a link to it from the storage provider
-	recording, err := c.Storage.GetRecording(ctx, rulesetId, callId)
+	reader, err := c.Storage.GetRecording(ctx, rulesetId, callId)
 	if err != nil {
 		log.Printf("Error getting recording from storage: %v", err)
 		return err
 	}
+	defer reader.Close()
+
+	recording, err := io.ReadAll(reader)
+	if err != nil {
+		log.Printf("Error reading recording from storage: %v", err)
+		return err
+	}
+
+	ruleset, err := c.DB.GetRuleSet(ctx, rulesetId)
+	if err != nil {
+		log.Printf("Error getting ruleset from database: %v", err)
+		return err
+	}
+
+	body := formatEmailBody(responses, rulesetId, ruleset.Title, callId)
 
 	// send the data to sendgrid to be emailed to the client
-	err = c.email.SendConversationEmail(ctx, recording, responses)
+	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, recording)
+	if err != nil {
+		log.Printf("Error sending email: %v", err)
+		return err
+	}
 
-	panic("unimplemented")
+	return nil
+}
+
+func formatEmailBody(responses []models.ConversationStepResponse, rulesetID string, rulesetTitle string, callID string) string {
+	var sb strings.Builder
+	for _, response := range responses {
+		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\n", rulesetID, rulesetTitle, callID, response.Purpose, response.Response))
+	}
+	return sb.String()
 }

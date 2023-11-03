@@ -28,6 +28,6 @@ func (api *WebClientAPI) routes() {
 
 func (api *WebClientAPI) HandleRoot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Hello from WebClientAPI",
+		"message": "Hello from WebClientAPI, it seems your API is running!",
 	})
 }

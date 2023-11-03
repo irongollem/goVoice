@@ -52,10 +52,10 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 	case "call.transcription":
 		t.transcriptionProcedure(c, event)
-	case "streaming.started":
-		// When a call is answered using a socket, its content will be streamed
-		c.AbortWithStatus(http.StatusNotFound)
-	case "streaming.stopped":
-		c.AbortWithStatus(http.StatusNotFound)
+	// case "streaming.started":
+	// 	// When a call is answered using a socket, its content will be streamed
+	// 	c.AbortWithStatus(http.StatusNotFound)
+	// case "streaming.stopped":
+	// 	c.AbortWithStatus(http.StatusNotFound)
 	}
 }

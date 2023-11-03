@@ -11,7 +11,8 @@ steps:
         "TELNYX_PHONE_NUMBER=${_TELNYX_PHONE_NUMBER}",
         "GCP_CREDENTIALS_FILE=${_GCP_CREDENTIALS_FILE}",
         "GCP_PROJECT_ID=${_GCP_PROJECT_ID}",
-        "SENDGRID_API_KEY=${_SENDGRID_API_KEY}",
+        "EMAIL_PASSWORD=${_EMAIL_PASSWORD}",
+
       ]
   - name: "gcr.io/cloud-builders/gcloud"
     args: ["app", "deploy"]
