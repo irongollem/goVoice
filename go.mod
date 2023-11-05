@@ -8,8 +8,9 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/joho/godotenv v1.5.1
 	google.golang.org/api v0.147.0
-	google.golang.org/appengine v1.6.8
 )
+
+require google.golang.org/appengine v1.6.7 // indirect
 
 require (
 	cloud.google.com/go v0.110.8 // indirect
@@ -43,7 +44,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/sendgrid/sendgrid-go v3.13.0+incompatible
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	go.opencensus.io v0.24.0 // indirect
