@@ -11,6 +11,11 @@ type TranscriptionData struct {
 	Transcript string  `json:"transcript"`
 }
 
+type RecordingUrls struct {
+	Mp3 string `json:"mp3"`
+	Wav string `json:"wav"`
+}
+
 type Event struct {
 	EventType  string `json:"event_type"`
 	ID         string `json:"id"`
@@ -28,6 +33,14 @@ type Event struct {
 		State             string            `json:"state"`
 		StartTime         string            `json:"start_time"`
 		To                string            `json:"to"`
+		// recording.error
+		Reason string `json:"reason"`
+		// recording.saved
+		RecordingStartedAt  string        `json:"recording_started_at"`
+		RecordingEndedAt    string        `json:"recording_ended_at"`
+		Channels            string        `json:"channels"`              // single or dual
+		RecordingUrls       RecordingUrls `json:"recording_urls"`        // Only valid for 10 minutes, unsure if we will use these
+		PublicRecordingUrls RecordingUrls `json:"public_recording_urls"` // only if activated on app
 	} `json:"payload"`
 	RecordType string `json:"record_type"`
 	Meta       struct {
@@ -77,4 +90,21 @@ type CommandPayload struct {
 	ServiceLevel string `json:"service_level"` // premium or basic (default premium needed for non en-US)
 	Stop         string `json:"stop"`          // undefined, current or all to stop any playing audio
 	Voice        string `json:"voice"`         // male or female
+}
+
+type Recording struct {
+	CallControlID      string        `json:"call_control_id"`
+	CallLegID          string        `json:"call_leg_id"`
+	CallSessionID      string        `json:"call_session_id"`
+	Channels           string        `json:"channels"` // single or dual
+	ConferenceId       string        `json:"conference_id"`
+	CreatedAt          string        `json:"created_at"`
+	DownloadUrls       RecordingUrls `json:"download_urls"`
+	DurationMillis     int           `json:"duration_millis"`
+	ID                 string        `json:"id"`
+	RecordType         string        `json:"record_type"` // "recording"
+	RecordingStartedAt string        `json:"recording_started_at"`
+	Source             string        `json:"source"` // "call" (or "conference" if conference call)
+	Status             string        `json:"status"` // "completed"
+	UpdatedAt          string        `json:"updated_at"`
 }

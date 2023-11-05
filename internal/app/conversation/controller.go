@@ -139,6 +139,7 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 	return rules.Steps[state.CurrentStep+1]
 }
 
+// FIXME get recording from storage or through TELNYX is unclear, so far to the DB we wrote the ID and url as provided by telnyx. If that also defines the file ID we could use our direct connection to storage, otherwise we need to use the telnyx API to get the recording
 func (c *Controller) EndConversation(ctx context.Context, rulesetId string, callId string) error {
 	// Get the recording or a link to it from the storage provider
 	reader, err := c.Storage.GetRecording(ctx, rulesetId, callId)
@@ -161,9 +162,10 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 		return err
 	}
 
-	c.retrieveResponsesAsTable(ctx, ruleset, callId)
+	body, _ := c.retrieveResponsesAsTable(ctx, ruleset, callId)
+	// if there is an error in the responses, we still want to send the recording
 
-	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, recording, filename)
+	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, *body, recording, filename)
 	if err != nil {
 		log.Printf("Error sending email: %v", err)
 		return err
@@ -172,3 +174,13 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 	return nil
 }
 
+func (c *Controller) ProcessRecording(ctx context.Context, rulesetId string, callId string, recordings []models.Recording) error {
+	// Set the recording on the conversation
+	err := c.DB.SetRecordings(ctx, rulesetId, callId, recordings)
+	if err != nil {
+		log.Printf("Error setting recordings on conversation: %v", err)
+		return err
+	}
+	// If the conversation is not complete, EndConversation will deal with that
+	c.EndConversation(ctx, rulesetId, callId)
+}

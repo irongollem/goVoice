@@ -6,49 +6,60 @@ import (
 	"fmt"
 	"goVoice/internal/models"
 	"log"
-	"math"
 	"net/http"
+	"path"
 	"time"
-)
 
-func (t *Telnyx) sendCommand(callControlId string, command string, payload *CommandPayload) (*http.Response, error) {
+	"github.com/avast/retry-go"
+)
+func (t *Telnyx) sendCommandToCallCommandsAPI (callControlId string, command string, payload *CommandPayload) (*http.Response, error) {
+	return t.sendCommand("POST", payload, "calls", callControlId, "actions",  command)
+}
+
+func (t *Telnyx) sendCommand( httpMethod string, payload *CommandPayload, pathParams ...string) (*http.Response, error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("Error marshaling payload: %v", err)
 		return nil, err
 	}
 
+	for _, param := range pathParams {
+		newPath := path.Join(t.APIurl.Path, param)
+		t.APIurl.Path = newPath
+	}
+
 	var resp *http.Response
-	var retries int
+	if err = retry.Do(
+		func() error{
+			req, err := http.NewRequest(httpMethod, t.APIurl.String(), bytes.NewBuffer(payloadBytes))
+			if err != nil {
+				log.Printf("Error creating request: %v", err)
+				return err
+			}
 
-	for retries = 0; retries < 5; retries++ {
-		req, err := http.NewRequest("POST", t.CommandPath+callControlId+"/actions/"+command, bytes.NewBuffer(payloadBytes))
-		if err != nil {
-			log.Printf("Error creating request: %v", err)
-			return nil, err
-		}
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+t.APIKey)
 
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+t.APIKey)
+			resp, err = http.DefaultClient.Do(req)
+			if err != nil {
+				log.Printf("Error sending command: %v", err)
+				return err
+			}
 
-		resp, err = http.DefaultClient.Do(req)
-		if err != nil {
-			log.Printf("Error sending command: %v", err)
-			continue
-		}
+			if resp.StatusCode >= 500 && resp.StatusCode < 600 {
+				log.Printf("Received %d status code, retrying", resp.StatusCode)
+				return fmt.Errorf("received %d status code, retrying", resp.StatusCode)
+			}
 
-		if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-			log.Printf("Received %d status code, retrying", resp.StatusCode)
-			time.Sleep(time.Duration(math.Pow(2, float64(retries))) * time.Second)
-			continue
-		}
-
-		break
+			return nil
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+	); err != nil {
+		log.Printf("Error sending command: %v", err)
+		return nil, err
 	}
 
-	if retries == 5 {
-		return nil, fmt.Errorf("failed to send command after %d retries", retries)
-	}
 
 	return resp, nil
 }
@@ -63,7 +74,7 @@ func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommand(event.Payload.CallControlID, "answer", &answerPayload)
+		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "answer", &answerPayload)
 		if err != nil {
 			log.Printf("Error answering call: %v", err)
 			errChan <- err
@@ -86,7 +97,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommand(event.Payload.CallControlID, "transcription_start", &transcriptionPayload)
+		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "transcription_start", &transcriptionPayload)
 		if err != nil {
 			log.Printf("Error starting transcription: %v", err)
 			errChan <- err
@@ -110,7 +121,7 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommand(event.Payload.CallControlID, "record_start", &recordingPayload)
+		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "record_start", &recordingPayload)
 		if err != nil {
 			log.Printf("Error starting recording: %v", err)
 			errChan <- err
@@ -136,7 +147,7 @@ func (t *Telnyx) SpeakText(callId string, text string, clientState *models.Clien
 	}
 
 	go func() {
-		_, err := t.sendCommand(callId, "speak_start", &speakPayload)
+		_, err := t.sendCommandToCallCommandsAPI(callId, "speak_start", &speakPayload)
 		if err != nil {
 			log.Printf("Error starting speak: %v", err)
 			errChan <- err
@@ -152,12 +163,48 @@ func (t *Telnyx) EndCall(callId string) (chan bool, chan error) {
 	errChan := make(chan error, 1)
 
 	go func() {
-		_, err := t.sendCommand(callId, "hangup", nil)
+		_, err := t.sendCommandToCallCommandsAPI(callId, "hangup", nil)
 		if err != nil {
 			log.Printf("Error ending call: %v", err)
 			errChan <- err
 		}
 		done <- true
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) GetRecordings(callId string) (chan []Recording, chan error) {
+	done := make(chan []Recording)
+	errChan := make(chan error, 1)
+
+	go func() {
+		res, err := t.sendCommand(callId, nil, "GET", "recordings")
+		if err != nil {
+			log.Printf("Error getting recordings: %v", err)
+			errChan <- err
+			return
+		}
+		defer res.Body.Close()
+
+		var recordings []Recording
+		if err := json.NewDecoder(res.Body).Decode(&recordings); err != nil {
+			log.Printf("Error decoding recordings: %v", err)
+			errChan <- err
+			return
+		}
+
+		var matchingRecordings []Recording
+		for _, r := range recordings {
+			if r.CallControlID == callId {
+				matchingRecordings = append(matchingRecordings, r)
+			}
+		}
+		if len(matchingRecordings) == 0 {
+			errChan <- fmt.Errorf("no recording found for call %s", callId)
+			return
+		}
+		done <- matchingRecordings
 	}()
 
 	return done, errChan

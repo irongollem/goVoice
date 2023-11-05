@@ -60,6 +60,51 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	}
 
 	ctx := c.Request.Context()
-
+	// TODO check if recording is done, if not, wait for it to finish
 	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callId)
+}
+
+/**
+* For now we don't do anything with the speak started event but are
+* required to respond to the incoming hook
+*/
+func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
+	// respond to the incoming hook immediately
+	c.Status(http.StatusOK)
+}
+
+/**
+* For now we don't do anything with the speak ended event but are
+* required to respond to the incoming hook
+*/
+func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
+	// respond to the incoming hook immediately
+	c.Status(http.StatusOK)
+}
+
+func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
+	// respond to the incoming hook immediately
+	c.Status(http.StatusOK)
+	
+	callId := event.Payload.CallControlID
+	state, err := decodeClientState(event.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v", err)
+	}
+
+	ctx := c.Request.Context()
+	recChan, errChan := t.GetRecordings(callId)
+	select {
+		case telnyxRecordings := <- recChan:
+			genericRecordings := convertToRecording(telnyxRecordings)
+			t.ConvCtrl.ProcessRecording(ctx, state.RulesetID, callId, genericRecordings)
+		case err := <- errChan:
+			log.Printf("Error getting recordings: %v", err)
+		}
+}
+
+func (t *Telnyx) recordingErrorProcedure(c *gin.Context, event Event) {
+	// respond to the incoming hook immediately
+	c.Status(http.StatusOK)
+	log.Printf("Recording error: %v", event.Payload.Reason)
 }

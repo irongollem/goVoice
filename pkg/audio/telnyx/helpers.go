@@ -29,3 +29,15 @@ func encodeClientState (state *models.ClientState) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(encodeState), nil
 }
+
+func convertToRecording (recordings []Recording) ([]models.Recording) {
+	var genericRecordings []models.Recording
+	for _, recording := range recordings {
+		genericRecordings = append(genericRecordings, models.Recording{
+			Url: recording.DownloadUrls.Mp3,
+			ID: recording.ID,
+			ConversationID: recording.CallControlID,
+		})
+	}
+	return genericRecordings
+}

@@ -31,10 +31,12 @@ type ConversationStepResponse struct {
 }
 
 type Conversation struct {
-	// conversation.ID should always be the same as the CallLegId
-	ID        string            `firestore:"id"`
-	RulesetID string            `firestore:"rulesetId"`
-	Responses map[string]string `firestore:"responses"`
+	// conversation.ID should always be the same as the CallControlId
+	ID               string            `firestore:"id"`
+	RulesetID        string            `firestore:"rulesetId"`
+	Responses        map[string]string `firestore:"responses"`
+	Recordings     	 []Recording			 `firestore:"recordings"`
+	ConversationDone bool              `firestore:"conversationDone"`
 }
 
 /* ClientState with telnyx is a freeform, base64 encoded string to pass back and forth
@@ -44,4 +46,10 @@ type Conversation struct {
 type ClientState struct {
 	RulesetID   string `json:"rulesetId"`
 	CurrentStep int    `json:"currentStep"`
+}
+
+type Recording struct {
+	ID             string `json:"id"`
+	Url            string `json:"url"`
+	ConversationID string `json:"conversationId"`
 }

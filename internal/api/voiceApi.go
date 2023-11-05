@@ -25,7 +25,7 @@ func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbPr
 		Storage: storage,
 		DB:      db,
 	}
-	client := telnyx.NewTelnyxClient(cfg.TelnyxAPIKey, cfg.TelnyxAPIUrl, convCtrl)
+	client := telnyx.NewTelnyxClient(cfg, convCtrl)
 	convCtrl.Provider = client
 
 	api.routes(client)

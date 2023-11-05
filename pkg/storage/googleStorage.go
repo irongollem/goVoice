@@ -79,3 +79,17 @@ func (h *GoogleStorageHandler) Close() error {
 	}
 	return nil
 }
+
+func (h *GoogleStorageHandler) MoveRenameFile(ctx context.Context, srcName string, dstName string) error {
+	src := h.client.Bucket(h.bucket).Object(srcName)
+	dst := h.client.Bucket(h.bucket).Object(dstName)
+	if _, err := dst.CopierFrom(src).Run(ctx); err != nil {
+		log.Printf("Error renaming file in Google Cloud Storage: %v", err)
+		return err
+	}
+	if err := src.Delete(ctx); err != nil {
+		log.Printf("Error deleting file from Google Cloud Storage: %v", err)
+		return err
+	}
+	return nil
+}
