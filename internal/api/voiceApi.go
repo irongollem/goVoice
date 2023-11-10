@@ -12,12 +12,11 @@ import (
 )
 
 type VoiceAPI struct {
-	Router  *gin.Engine
+	Router *gin.Engine
 }
 
-func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbProvider) *VoiceAPI {
-	ginEngine := gin.Default()
-	api := &VoiceAPI{Router: ginEngine}
+func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbProvider, router *gin.Engine) *VoiceAPI {
+	api := &VoiceAPI{Router: router}
 
 	// We can replace the Telnyx struct with any other provider
 	// as long as they implement the CallProvider interface
@@ -26,6 +25,7 @@ func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbPr
 		DB:      db,
 	}
 	client := telnyx.NewTelnyxClient(cfg, convCtrl)
+	client.SetBucketCredentials(cfg)
 	convCtrl.Provider = client
 
 	api.routes(client)

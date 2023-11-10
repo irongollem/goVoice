@@ -56,6 +56,16 @@ type SoundModifications struct {
 	Track    string  `json:"track"`
 }
 
+type CredentialsConfiguration struct {
+		Bucket      string `json:"bucket"`
+		Credentials string `json:"credentials"`
+	}
+
+type CredentialsPayload struct {
+	Backend       string `json:"backend"`
+	Configuration CredentialsConfiguration `json:"configuration"`
+}
+
 type CommandPayload struct {
 	CommandId          string              `json:"command_id"`
 	CustomHeaders      []Header            `json:"custom_headers"`

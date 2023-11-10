@@ -1,14 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"goVoice/internal/api"
 	"goVoice/internal/config"
 	"goVoice/pkg/db"
+	"goVoice/pkg/host"
 	"goVoice/pkg/storage"
 	"log"
+	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	fmt.Println(os.Getwd())
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -22,24 +28,13 @@ func main() {
 		log.Fatalf("Failed to create db handler: %v", err)
 	}
 
+	router := gin.Default()
+	router.Use(host.ValidateXForwardedFor)
 	// Create the API for the UI
-	webClientAPI := api.NewWebClientAPI(cfg, storageHandler, dbHandler)
+	api.NewWebClientAPI(cfg, storageHandler, dbHandler, router)
 	// Create the API for the call manager
-	voiceAPI := api.NewVoiceAPI(cfg, storageHandler, dbHandler)
-	
-	if err != nil {
-		log.Fatalf("Failed to create storage handler: %v", err)
+	api.NewVoiceAPI(cfg, storageHandler, dbHandler, router)
+	if err := router.Run(cfg.ApiPort); err != nil {
+		log.Fatalf("Failed to start web client server: %v", err)
 	}
-
-	go func() {
-		if err := webClientAPI.Router.Run(cfg.WebClientAPIAddr); err != nil {
-			log.Fatalf("Failed to start web client server: %v", err)
-		}
-	}()
-
-	go func() {
-		if err := voiceAPI.Router.Run(cfg.VoiceAPIAddr); err != nil {
-			log.Fatalf("Failed to start call API server: %v", err)
-		}
-	}()
 }

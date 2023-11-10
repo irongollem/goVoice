@@ -15,6 +15,8 @@ goVoice is a simple voice driven call agent. It is currently in development and 
 ### Install
 
 ```bash
+//
+git clone git@github.com:irongollem/goVoice.git
 go mod download
 ```
 

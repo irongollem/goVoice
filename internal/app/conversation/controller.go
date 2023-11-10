@@ -141,6 +141,9 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 
 // FIXME get recording from storage or through TELNYX is unclear, so far to the DB we wrote the ID and url as provided by telnyx. If that also defines the file ID we could use our direct connection to storage, otherwise we need to use the telnyx API to get the recording
 func (c *Controller) EndConversation(ctx context.Context, rulesetId string, callId string) error {
+	// Typically this is called when the caller hangs up, or when the conversation is complete
+	// Which is triggered when recording is done OR when the LLM determines the conversation is complete
+	
 	// Get the recording or a link to it from the storage provider
 	reader, err := c.Storage.GetRecording(ctx, rulesetId, callId)
 	if err != nil {
@@ -182,5 +185,5 @@ func (c *Controller) ProcessRecording(ctx context.Context, rulesetId string, cal
 		return err
 	}
 	// If the conversation is not complete, EndConversation will deal with that
-	c.EndConversation(ctx, rulesetId, callId)
+	return c.EndConversation(ctx, rulesetId, callId)
 }

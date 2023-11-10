@@ -6,11 +6,9 @@ import (
 	"goVoice/internal/config"
 	"io"
 	"log"
-	"os"
 
 	"cloud.google.com/go/storage"
 	"github.com/gin-gonic/gin"
-	"google.golang.org/api/option"
 )
 
 type GoogleStorageHandler struct {
@@ -22,12 +20,7 @@ func NewGoogleStorageHandler(cfg *config.Config) (*GoogleStorageHandler, error) 
 	ctx := context.Background()
 	bucket := "govoice-recordings"
 
-	credentials, err := os.ReadFile(cfg.GCPCredentialsFile)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := storage.NewClient(ctx, option.WithCredentialsJSON(credentials))
+	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
 	}

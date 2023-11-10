@@ -2,19 +2,19 @@ package telnyx
 
 import (
 	"bytes"
+	"encoding/json"
 	"goVoice/internal/app/conversation"
 	"goVoice/internal/config"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Telnyx struct {
 	APIKey   string
-	APIurl   url.URL
+	APIUrl   *url.URL
 	ConvCtrl *conversation.Controller
 }
 
@@ -23,13 +23,12 @@ func NewTelnyxClient(cfg *config.Config, convCtrl *conversation.Controller) *Tel
 	if err != nil {
 		log.Fatalf("Error parsing Telnyx API URL: %v", err)
 	}
-	
+
 	client := &Telnyx{
 		APIKey:   cfg.TelnyxAPIKey,
-		APIurl:   *apiUrl,
+		APIUrl:   apiUrl,
 		ConvCtrl: convCtrl,
 	}
-	client.setBucketCredentials(cfg)
 	return client
 }
 
@@ -76,22 +75,24 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 	}
 }
 
-func (t *Telnyx) setBucketCredentials(cfg *config.Config) error {
+func (t *Telnyx) SetBucketCredentials(cfg *config.Config) error {
 	url := `https://api.telnyx.com/v2/custom_storage_credentials/` + cfg.TelnyxAppId
-	credentials, err := os.ReadFile(cfg.GCPCredentialsFile)
+
+	payload := CredentialsPayload{
+		Backend: "gcs",
+		Configuration: CredentialsConfiguration{
+			Bucket:      "govoice-recordings",
+		},
+	}
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Error reading GCP credentials file: %v", err)
+		log.Printf("Error marshaling payload: %v", err)
 		return err
 	}
-	payload := `{
-		"backend": "gcs",
-		"configuration": {
-			"bucket": "govoice-recordings",
-			"credentials": ` + string(credentials) + `,
-		}
-	}`
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
+	t.sendCommand("POST", &payload, "custom_storage_credentials", cfg.TelnyxAppId)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		log.Printf("Error creating request: %v", err)
 		return err

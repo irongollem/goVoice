@@ -16,22 +16,33 @@ func (t *Telnyx) sendCommandToCallCommandsAPI (callControlId string, command str
 	return t.sendCommand("POST", payload, "calls", callControlId, "actions",  command)
 }
 
-func (t *Telnyx) sendCommand( httpMethod string, payload *CommandPayload, pathParams ...string) (*http.Response, error) {
-	payloadBytes, err := json.Marshal(payload)
+func (t *Telnyx) sendCommand( httpMethod string, payload interface{}, pathParams ...string) (*http.Response, error) {
+	var payloadBytes []byte
+	var err error
+	
+	switch v := payload.(type) {
+		case *CommandPayload:
+			payloadBytes, err = json.Marshal(v)
+		case *CredentialsPayload:
+			payloadBytes, err = json.Marshal(v)
+		default:
+			log.Printf("Unknown payload type: %T", v)
+			return nil, fmt.Errorf("unknown payload type: %T", v)
+	}
 	if err != nil {
 		log.Printf("Error marshaling payload: %v", err)
 		return nil, err
 	}
 
 	for _, param := range pathParams {
-		newPath := path.Join(t.APIurl.Path, param)
-		t.APIurl.Path = newPath
+		newPath := path.Join(t.APIUrl.Path, param)
+		t.APIUrl.Path = newPath
 	}
 
 	var resp *http.Response
 	if err = retry.Do(
 		func() error{
-			req, err := http.NewRequest(httpMethod, t.APIurl.String(), bytes.NewBuffer(payloadBytes))
+			req, err := http.NewRequest(httpMethod, t.APIUrl.String(), bytes.NewBuffer(payloadBytes))
 			if err != nil {
 				log.Printf("Error creating request: %v", err)
 				return err

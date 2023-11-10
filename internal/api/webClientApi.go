@@ -15,9 +15,8 @@ type WebClientAPI struct {
 	db      db.DbProvider
 }
 
-func NewWebClientAPI(cfg *config.Config, storageHandler storage.StorageProvider, dbHandler db.DbProvider) *WebClientAPI {
-	ginEngine := gin.Default()
-	api := &WebClientAPI{Router: ginEngine, storage: storageHandler, db: dbHandler}
+func NewWebClientAPI(cfg *config.Config, storageHandler storage.StorageProvider, dbHandler db.DbProvider, router *gin.Engine) *WebClientAPI {
+	api := &WebClientAPI{Router: router, storage: storageHandler, db: dbHandler}
 	api.routes()
 	return api
 }

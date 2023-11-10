@@ -9,3 +9,9 @@ handlers:
 - url: /.*
   script: auto
   secure: always
+
+env_variables:
+  PORT: 8080
+  ENV: production
+  GCP_PROJECT_ID: hconnect-1534342056131
+  GIN_MODE: release
