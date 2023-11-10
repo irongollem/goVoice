@@ -5,9 +5,9 @@ import (
 	"goVoice/internal/api"
 	"goVoice/internal/config"
 	"goVoice/pkg/db"
-	"goVoice/pkg/host"
 	"goVoice/pkg/storage"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +29,9 @@ func main() {
 	}
 
 	router := gin.Default()
-	router.Use(host.ValidateXForwardedFor)
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
 	// Create the API for the UI
 	api.NewWebClientAPI(cfg, storageHandler, dbHandler, router)
 	// Create the API for the call manager

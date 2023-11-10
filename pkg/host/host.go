@@ -58,6 +58,7 @@ func isGoogleCloudIP(ip string) bool {
 
 func ValidateXForwardedFor(c *gin.Context) {
     lastIP := c.ClientIP()	
+    log.Printf("Last IP: %s", lastIP)
 
     // Only accept requests coming from either localhost (testing) or Google Cloud (container environment)
 	if lastIP != "127.0.0.1" && lastIP != "::1" && !isGoogleCloudIP(lastIP) {
