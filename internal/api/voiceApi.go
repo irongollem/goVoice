@@ -35,6 +35,7 @@ func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbPr
 func (api *VoiceAPI) routes(client audio.CallProvider) {
 	voiceRoutes := api.Router.Group("/call")
 	{
+		voiceRoutes.GET("/", client.IAmLive)
 		voiceRoutes.POST("/", client.HandleWebHook)
 	}
 }
