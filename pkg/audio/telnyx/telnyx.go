@@ -32,6 +32,12 @@ func NewTelnyxClient(cfg *config.Config, convCtrl *conversation.Controller) *Tel
 	return client
 }
 
+func (t *Telnyx) IAmLive (c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hello from Telnyx, it seems your API is running!",
+	})
+}
+
 func (t *Telnyx) HandleWebHook(c *gin.Context) {
 	c.Writer.Header().Set("Authorization", "Bearer "+t.APIKey)
 
@@ -45,7 +51,8 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 		return
 	}
 
-	callType := event.EventType
+	callType := event.Data.EventType
+
 
 	switch callType {
 	case "call.initiated":
@@ -90,7 +97,8 @@ func (t *Telnyx) SetBucketCredentials(cfg *config.Config) error {
 		return err
 	}
 
-	t.sendCommand("POST", &payload, "custom_storage_credentials", cfg.TelnyxAppId)
+	// TODO: temporarily turned off custom buckets
+	// t.sendCommand("POST", &payload, "custom_storage_credentials", cfg.TelnyxAppId)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
 	if err != nil {

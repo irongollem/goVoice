@@ -16,6 +16,7 @@ import (
 
 func (t *Telnyx) answerProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
+	log.Printf("Answering call: %v", event)
 	c.Status(http.StatusOK)
 
 	t.answerCall(event)
@@ -31,7 +32,7 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	t.startTranscription(event)
 	t.startRecording(event)
 
-	t.ConvCtrl.StartConversation(event.Payload.CallControlID) // TODO: check if callControlId is the correct one
+	t.ConvCtrl.StartConversation(event.Data.Payload.CallControlID)
 }
 
 func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
@@ -39,9 +40,9 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 	c.Status(http.StatusOK)
 	ctx := c.Request.Context()
 
-	transcriptionData := event.Payload.TranscriptionData
-	callId := event.Payload.CallControlID
-	state, err := decodeClientState(event.Payload.ClientState)
+	transcriptionData := event.Data.Payload.TranscriptionData
+	callId := event.Data.Payload.CallControlID
+	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
@@ -53,8 +54,8 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
 
-	callId := event.Payload.CallControlID
-	state, err := decodeClientState(event.Payload.ClientState)
+	callId := event.Data.Payload.CallControlID
+	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
@@ -86,8 +87,8 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
 	
-	callId := event.Payload.CallControlID
-	state, err := decodeClientState(event.Payload.ClientState)
+	callId := event.Data.Payload.CallControlID
+	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
@@ -106,5 +107,5 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) recordingErrorProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
-	log.Printf("Recording error: %v", event.Payload.Reason)
+	log.Printf("Recording error: %v", event.Data.Payload.Reason)
 }

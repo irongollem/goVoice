@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"goVoice/internal/models"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 func decodeClientState (encState string) (*models.ClientState, error) {
@@ -40,4 +42,11 @@ func convertToRecording (recordings []Recording) ([]models.Recording) {
 		})
 	}
 	return genericRecordings
+}
+
+func generateCommandID (CallControlID, funcName string, clientState string) string {
+	idString := CallControlID + funcName + clientState + "v1"
+
+	id := uuid.NewMD5(uuid.Nil, []byte(idString))
+	return id.String()
 }

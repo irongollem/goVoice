@@ -17,33 +17,35 @@ type RecordingUrls struct {
 }
 
 type Event struct {
-	EventType  string `json:"event_type"`
-	ID         string `json:"id"`
-	OccurredAt string `json:"occurred_at"`
-	Payload    struct {
-		CallControlID     string            `json:"call_control_id"`
-		CallLegID         string            `json:"call_leg_id"`
-		CallSessionID     string            `json:"call_session_id"`
-		ClientState       string            `json:"client_state"`
-		ConnectionID      string            `json:"connection_id"`
-		TranscriptionData TranscriptionData `json:"transcription_data"`
-		CustomHeaders     []Header          `json:"custom_headers"`
-		Direction         string            `json:"direction"`
-		From              string            `json:"from"`
-		State             string            `json:"state"`
-		StartTime         string            `json:"start_time"`
-		To                string            `json:"to"`
-		// recording.error
-		Reason string `json:"reason"`
-		// recording.saved
-		RecordingStartedAt  string        `json:"recording_started_at"`
-		RecordingEndedAt    string        `json:"recording_ended_at"`
-		Channels            string        `json:"channels"`              // single or dual
-		RecordingUrls       RecordingUrls `json:"recording_urls"`        // Only valid for 10 minutes, unsure if we will use these
-		PublicRecordingUrls RecordingUrls `json:"public_recording_urls"` // only if activated on app
-	} `json:"payload"`
-	RecordType string `json:"record_type"`
-	Meta       struct {
+	Data struct {
+		EventType  string `json:"event_type"`
+		ID         string `json:"id"`
+		OccurredAt string `json:"occurred_at"`
+		Payload    struct {
+			CallControlID     string            `json:"call_control_id"`
+			CallLegID         string            `json:"call_leg_id"`
+			CallSessionID     string            `json:"call_session_id"`
+			ClientState       string            `json:"client_state"`
+			ConnectionID      string            `json:"connection_id"`
+			TranscriptionData TranscriptionData `json:"transcription_data"`
+			CustomHeaders     []Header          `json:"custom_headers"`
+			Direction         string            `json:"direction"`
+			From              string            `json:"from"`
+			State             string            `json:"state"`
+			StartTime         string            `json:"start_time"`
+			To                string            `json:"to"`
+			// recording.error
+			Reason string `json:"reason"`
+			// recording.saved
+			RecordingStartedAt  string        `json:"recording_started_at"`
+			RecordingEndedAt    string        `json:"recording_ended_at"`
+			Channels            string        `json:"channels"`              // single or dual
+			RecordingUrls       RecordingUrls `json:"recording_urls"`        // Only valid for 10 minutes, unsure if we will use these
+			PublicRecordingUrls RecordingUrls `json:"public_recording_urls"` // only if activated on app
+		} `json:"payload"`
+		RecordType string `json:"record_type"`
+	} `json:"data"`
+	Meta struct {
 		Attempt     int    `json:"attempt"`
 		DeliveredTo string `json:"delivered_to"`
 	} `json:"meta"`
@@ -57,49 +59,8 @@ type SoundModifications struct {
 }
 
 type CredentialsConfiguration struct {
-		Bucket      string `json:"bucket"`
-		Credentials string `json:"credentials"`
-	}
-
-type CredentialsPayload struct {
-	Backend       string `json:"backend"`
-	Configuration CredentialsConfiguration `json:"configuration"`
-}
-
-type CommandPayload struct {
-	CommandId          string              `json:"command_id"`
-	CustomHeaders      []Header            `json:"custom_headers"`
-	SipHeaders         []Header            `json:"sip_headers"`
-	SoundModifications *SoundModifications `json:"sound_modifications"`
-	ClientState        string              `json:"client_state"`
-	// for transcription use nl for speak use nl-NL
-	Language string `json:"language"`
-
-	// Answer specific
-	BillingGroupID      string `json:"billing_group_id"`
-	StreamUrl           string `json:"stream_url"`
-	StreamTrack         string `json:"stream_track"`
-	SendSilenceWhenIdle bool   `json:"send_silence_when_idle"`
-	WebhookUrl          string `json:"webhook_url"`
-	WehookUrlMethod     string `json:"webhook_url_method"`
-
-	// Transcription specific
-	TranscriptionEngine string `json:"transcription_engine"`
-
-	// Recording specific
-	Format      string `json:"format"`
-	Channels    string `json:"channels"`
-	Trim        string `json:"trim"`
-	PlayBeap    bool   `json:"play_beep"`
-	MaxLength   int    `json:"max_length"`
-	TimeoutSecs int    `json:"timeout_secs"`
-
-	// Speak specific
-	Payload      string `json:"payload"`
-	PayloadType  string `json:"payload_type"`  // text or ssml
-	ServiceLevel string `json:"service_level"` // premium or basic (default premium needed for non en-US)
-	Stop         string `json:"stop"`          // undefined, current or all to stop any playing audio
-	Voice        string `json:"voice"`         // male or female
+	Bucket      string `json:"bucket"`
+	Credentials string `json:"credentials"`
 }
 
 type Recording struct {

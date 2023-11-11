@@ -12,23 +12,26 @@ import (
 
 	"github.com/avast/retry-go"
 )
-func (t *Telnyx) sendCommandToCallCommandsAPI (callControlId string, command string, payload *CommandPayload) (*http.Response, error) {
-	return t.sendCommand("POST", payload, "calls", callControlId, "actions",  command)
+
+func (t *Telnyx) sendCommandToCallCommandsAPI(callControlId string, command string, payload interface{}) (*http.Response, error) {
+	return t.sendCommand("POST", payload, "calls", callControlId, "actions", command)
 }
 
-func (t *Telnyx) sendCommand( httpMethod string, payload interface{}, pathParams ...string) (*http.Response, error) {
-	var payloadBytes []byte
-	var err error
-	
-	switch v := payload.(type) {
-		case *CommandPayload:
-			payloadBytes, err = json.Marshal(v)
-		case *CredentialsPayload:
-			payloadBytes, err = json.Marshal(v)
-		default:
-			log.Printf("Unknown payload type: %T", v)
-			return nil, fmt.Errorf("unknown payload type: %T", v)
+func (t *Telnyx) sendCommand(httpMethod string, payload interface{}, pathParams ...string) (*http.Response, error) {
+	_, isSimplePayload := payload.(*SimplePayload)
+	_, isAnswerPayload := payload.(*AnswerPayload)
+	_, isUpdateClientStatePayload := payload.(*UpdateClientStatePayload)
+	_, isGatherPayload := payload.(*GatherPayload)
+	_, isRecordStartPayload := payload.(*RecordStartPayload)
+	_, isSpeakTextPayload := payload.(*SpeakTextPayload)
+	_, isNoiseSuppressionPayload := payload.(*NoiseSuppressionPayload)
+	_, isTranscriptionPayload := payload.(*TranscriptionPayload)
+
+	if !isSimplePayload && !isAnswerPayload && !isUpdateClientStatePayload && !isGatherPayload && !isRecordStartPayload && !isSpeakTextPayload && !isNoiseSuppressionPayload && !isTranscriptionPayload {
+		log.Printf("Unknown payload type: %T", payload)
+		return nil, fmt.Errorf("unknown payload type: %T", payload)
 	}
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("Error marshaling payload: %v", err)
 		return nil, err
@@ -38,10 +41,10 @@ func (t *Telnyx) sendCommand( httpMethod string, payload interface{}, pathParams
 		newPath := path.Join(t.APIUrl.Path, param)
 		t.APIUrl.Path = newPath
 	}
-
+	log.Printf("Sending command to %s: %s; With api key %s", t.APIUrl.String(), string(payloadBytes), t.APIKey)
 	var resp *http.Response
 	if err = retry.Do(
-		func() error{
+		func() error {
 			req, err := http.NewRequest(httpMethod, t.APIUrl.String(), bytes.NewBuffer(payloadBytes))
 			if err != nil {
 				log.Printf("Error creating request: %v", err)
@@ -71,25 +74,31 @@ func (t *Telnyx) sendCommand( httpMethod string, payload interface{}, pathParams
 		return nil, err
 	}
 
-
 	return resp, nil
 }
 
 func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
+	log.Printf("Answering call %s", event.Data.Payload.CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
-	answerPayload := CommandPayload{
+	answerPayload := &AnswerPayload{
 		SendSilenceWhenIdle: true,
-		ClientState:         event.Payload.ClientState,
+		ClientState:         event.Data.Payload.ClientState,
+		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "answer", event.Data.Payload.ClientState),
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "answer", &answerPayload)
+		res, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallLegID, "answer", &answerPayload)
 		if err != nil {
 			log.Printf("Error answering call: %v", err)
 			errChan <- err
 		}
+		if res.StatusCode >= http.StatusBadRequest {
+			log.Printf("Error answering call: %v", res.Status)
+			errChan <- fmt.Errorf("error answering call: %v", res.Status)
+		}
+		log.Printf("Answered call %s", event.Data.Payload.CallControlID)
 		done <- true
 	}()
 
@@ -97,18 +106,19 @@ func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
 }
 
 func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
+	log.Printf("Starting transcription for call %s", event.Data.Payload.CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
-	transcriptionPayload := CommandPayload{
-		ClientState:         event.Payload.ClientState,
-		CommandId:           "transcription-1", // TODO make sure this if fine
+	transcriptionPayload := &TranscriptionPayload{
+		ClientState:         event.Data.Payload.ClientState,
+		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
 		Language:            "nl",              // TODO: try using auto_detect and talk other languages
 		TranscriptionEngine: "B",               // A is google, B is telnyx
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "transcription_start", &transcriptionPayload)
+		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_start", &transcriptionPayload)
 		if err != nil {
 			log.Printf("Error starting transcription: %v", err)
 			errChan <- err
@@ -120,19 +130,20 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 }
 
 func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
+	log.Printf("Starting recording for call %s", event.Data.Payload.CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
-	recordingPayload := CommandPayload{
-		ClientState: event.Payload.ClientState,
-		CommandId:   "recording-1", // TODO make sure this if fine
+	recordingPayload := RecordStartPayload{
+		ClientState: event.Data.Payload.ClientState,
+		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_start", event.Data.Payload.ClientState),
 		Format:      "mp3",
 		Channels:    "single",
 		Trim:        "trim-silence",
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Payload.CallControlID, "record_start", &recordingPayload)
+		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_start", &recordingPayload)
 		if err != nil {
 			log.Printf("Error starting recording: %v", err)
 			errChan <- err
@@ -143,14 +154,15 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
-func (t *Telnyx) SpeakText(callId string, text string, clientState *models.ClientState) (chan bool, chan error) {
+func (t *Telnyx) SpeakText(CallControlID string, text string, clientState *models.ClientState) (chan bool, chan error) {
+	log.Printf("Speaking text for call %s", CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
 	state, _ := encodeClientState(clientState)
 
-	speakPayload := CommandPayload{
-		CommandId:   "speak-1", // TODO make sure this if fine
+	speakPayload := SpeakTextPayload{
+		CommandID:   generateCommandID(CallControlID, "speak_start", state),
 		Language:    "nl-NL",
 		Voice:       "male",
 		Payload:     text,
@@ -158,7 +170,7 @@ func (t *Telnyx) SpeakText(callId string, text string, clientState *models.Clien
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(callId, "speak_start", &speakPayload)
+		_, err := t.sendCommandToCallCommandsAPI(CallControlID, "speak_start", &speakPayload)
 		if err != nil {
 			log.Printf("Error starting speak: %v", err)
 			errChan <- err
@@ -170,6 +182,7 @@ func (t *Telnyx) SpeakText(callId string, text string, clientState *models.Clien
 }
 
 func (t *Telnyx) EndCall(callId string) (chan bool, chan error) {
+	log.Printf("Ending call %s", callId)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
@@ -186,6 +199,7 @@ func (t *Telnyx) EndCall(callId string) (chan bool, chan error) {
 }
 
 func (t *Telnyx) GetRecordings(callId string) (chan []Recording, chan error) {
+	log.Printf("Getting recordings for call %s", callId)
 	done := make(chan []Recording)
 	errChan := make(chan error, 1)
 
