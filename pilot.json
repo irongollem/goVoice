@@ -1,10 +1,16 @@
 {
   "id": "LeeuwardenPilot",
+  "title": "Leeuwarden Pilot",
+  "client": {
+    "name": "Gemeente Leeuwarden",
+    "email": "jeffrey@crocode.nl"
+  },
   "Simple": true,
   "steps": [
     {
       "userType": "agent",
-      "text": "Welkom bij de Gemeente Leeuwarden. U spreekt met de spraak assistent (naam geven?). Bij mij kunt u een melding doorgeven als iets kapot is, of beter kan in uw woon-, werk-, of leefomgeving. Ik stel u een paar vragen. Als u de vraag beantwoord heeft, gaat u vanzelf door naar de volgende vraag. Wat is uw melding? Vertel zoveel mogelijk details over wat er aan de hand is.",
+      "text": "Welkom bij de Gemeente Leeuwarden. U spreekt met de spraak assistent. Bij mij kunt u een melding doorgeven als iets kapot is, of beter kan in uw woon-, werk-, of leefomgeving. Ik stel u een paar vragen. Als u de vraag beantwoord heeft, gaat u vanzelf door naar de volgende vraag. Wat is uw melding? Vertel zoveel mogelijk details over wat er aan de hand is.",
+      "ssml": "<speak>Welkom bij de Gemeente Leeuwarden. U spreekt met de spraak assistent. Bij mij kunt u een <emphasis>melding</emphasis> doorgeven als iets kapot is, of beter kan in uw woon-,<break x-weak> werk-,<break x-weak> of leefomgeving. Ik stel u een paar vragen. Als u de vraag beantwoord heeft, gaat u vanzelf door naar de volgende vraag. Wat is uw melding? Vertel zoveel mogelijk details over wat er aan de hand is.</speak>",
       "purpose": "melding"
     },
     {

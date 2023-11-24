@@ -43,7 +43,9 @@ type Event struct {
 			RecordingUrls       RecordingUrls `json:"recording_urls"`        // Only valid for 10 minutes, unsure if we will use these
 			PublicRecordingUrls RecordingUrls `json:"public_recording_urls"` // only if activated on app
 		} `json:"payload"`
-		RecordType string `json:"record_type"`
+		// call.recording.saved
+		RecordType  string `json:"record_type"`
+		RecordingId string `json:"recording_id"`
 	} `json:"data"`
 	Meta struct {
 		Attempt     int    `json:"attempt"`
@@ -63,6 +65,7 @@ type CredentialsConfiguration struct {
 	Credentials string `json:"credentials"`
 }
 
+// Describes a recording as returned by the Telnyx Recording API
 type Recording struct {
 	CallControlID      string        `json:"call_control_id"`
 	CallLegID          string        `json:"call_leg_id"`
@@ -78,4 +81,8 @@ type Recording struct {
 	Source             string        `json:"source"` // "call" (or "conference" if conference call)
 	Status             string        `json:"status"` // "completed"
 	UpdatedAt          string        `json:"updated_at"`
+}
+
+type RecordingResponse struct {
+	Data *Recording `json:"data"`
 }

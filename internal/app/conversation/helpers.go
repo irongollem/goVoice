@@ -9,6 +9,7 @@ import (
 )
 
 func (c *Controller) storeTranscription(ctx context.Context, callId string, state *models.ClientState, ruleSet *models.ConversationRuleSet, transcript string) {
+	log.Printf("Storing transcription: %s", transcript)
 	c.DB.AddResponse(ctx, state.RulesetID, callId, &models.ConversationStepResponse{
 		Purpose: 		ruleSet.Steps[state.CurrentStep].Purpose,
 		Response: 		transcript,

@@ -16,8 +16,8 @@ import (
 
 func (t *Telnyx) answerProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
-	log.Printf("Answering call: %v", event)
 	c.Status(http.StatusOK)
+	log.Printf("Answering call: %v", event)
 
 	t.answerCall(event)
 }
@@ -25,6 +25,7 @@ func (t *Telnyx) answerProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	log.Printf("Call started: %v", event)
 
 	// Start recording the call and start transcription
 	// Any further process should only start once we know transcription
@@ -38,8 +39,9 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
-	ctx := c.Request.Context()
+	log.Printf("Transcription received: %v", event)
 
+	ctx := c.Request.Context()
 	transcriptionData := event.Data.Payload.TranscriptionData
 	callId := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)
@@ -53,6 +55,7 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	log.Printf("Call ended: %v", event)
 
 	callId := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)
@@ -72,6 +75,7 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	log.Print("Speak started")
 }
 
 /**
@@ -81,24 +85,27 @@ func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	log.Print("Speak ended")
 }
 
 func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	log.Printf("Recording saved: %v", event.Data.RecordingId)
 	
 	callId := event.Data.Payload.CallControlID
+	recordingId := event.Data.RecordingId
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
 
 	ctx := c.Request.Context()
-	recChan, errChan := t.GetRecordings(callId)
+	recChan, errChan := t.GetRecording(recordingId)
 	select {
-		case telnyxRecordings := <- recChan:
-			genericRecordings := convertToRecording(telnyxRecordings)
-			t.ConvCtrl.ProcessRecording(ctx, state.RulesetID, callId, genericRecordings)
+		case telnyxRecording := <- recChan:
+			genericRecording := convertToRecording(telnyxRecording)
+			t.ConvCtrl.ProcessRecording(ctx, state.RulesetID, callId, genericRecording)
 		case err := <- errChan:
 			log.Printf("Error getting recordings: %v", err)
 		}

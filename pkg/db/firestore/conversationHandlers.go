@@ -39,13 +39,13 @@ func (f *FirestoreClient) AddResponse(ctx context.Context, rulesetId string, con
 	return nil
 }
 
-func (f *FirestoreClient) SetRecordings(ctx context.Context, rulesetId string, conversationId string, recordings []models.Recording) error {
+func (f *FirestoreClient) SetRecordings(ctx context.Context, rulesetId string, conversationId string, recording *models.Recording) error {
 	_, err := f.Client.Collection("rulesets").
 		Doc(rulesetId).
 		Collection("conversations").
 		Doc(conversationId).
 		Update(ctx, []firestore.Update{
-			{Path: "recordings", Value: recordings},
+			{Path: "recordings", Value: recording},
 		})
 		
 	if err != nil {

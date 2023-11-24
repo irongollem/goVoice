@@ -14,7 +14,7 @@ type DbProvider interface {
 	GetResponses(ctx context.Context, rulesetId string, conversationId string) ([]models.ConversationStepResponse, error)
 	AddConversation(ctx context.Context, rulesetId string, conversation *models.Conversation) error
 	AddResponse(ctx context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error
-	SetRecordings(ctx context.Context, rulesetId string, conversationId string, recordings []models.Recording) error
+	SetRecordings(ctx context.Context, rulesetId string, conversationId string, recording *models.Recording) error
 	SetConversationDone(ctx context.Context, rulesetId string, conversationId string) error
 	IsConversationComplete(ctx context.Context, rulesetId string, conversationId string) ([]models.Recording, error)
 }

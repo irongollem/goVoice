@@ -72,7 +72,6 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callId string, tr
 
 	c.storeTranscription(ctx, callId, state, rules, transcript)
 
-	// combine transcription with conversation rules
 	step, err := c.getResponse(rules, state, transcript)
 	if err != nil {
 		log.Printf("Error getting response for client: %v", err)
@@ -98,7 +97,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callId string, tr
 
 func (c *Controller) getRules(callId string) (*models.ConversationRuleSet, error) {
 	//  after pilot we should actually fetch this
-	file, err := os.Open("pilot.json")
+	file, err := os.Open("./pilot.json")
 	if err != nil {
 		log.Printf("Error opening pilot.json file: %v", err)
 		return &models.ConversationRuleSet{}, err
@@ -136,19 +135,36 @@ func getAdvancedResponse(rules *models.ConversationRuleSet, state *models.Client
 
 // get a response using a simple call script
 func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientState) models.ConversationStep {
-	return rules.Steps[state.CurrentStep+1]
+	if len(rules.Steps) >= state.CurrentStep+1 {
+		return rules.Steps[state.CurrentStep+1]
+	} else {
+		return models.ConversationStep{
+			Text: "Bedankt voor het bellen, tot ziens!",
+		}
+	}
 }
 
 // FIXME get recording from storage or through TELNYX is unclear, so far to the DB we wrote the ID and url as provided by telnyx. If that also defines the file ID we could use our direct connection to storage, otherwise we need to use the telnyx API to get the recording
 func (c *Controller) EndConversation(ctx context.Context, rulesetId string, callId string) error {
 	// Typically this is called when the caller hangs up, or when the conversation is complete
 	// Which is triggered when recording is done OR when the LLM determines the conversation is complete
-	
+	onOwnBucket := false
 	// Get the recording or a link to it from the storage provider
-	reader, err := c.Storage.GetRecording(ctx, rulesetId, callId)
-	if err != nil {
-		log.Printf("Error getting recording from storage: %v", err)
-		return err
+	var err error
+	var reader io.ReadCloser
+	if onOwnBucket {
+		reader, err = c.Storage.GetRecording(ctx, rulesetId, callId)
+		if err != nil {
+			log.Printf("Error getting recording from storage: %v", err)
+			return err
+		}
+	} else {
+		// FIXME get recording from telnyx
+		// reader, err = c.Provider.GetRecording(ctx, rulesetId, callId)
+		// if err != nil {
+		// 	log.Printf("Error getting recording from telnyx: %v", err)
+		// 	return err
+		// }
 	}
 	defer reader.Close()
 
@@ -177,9 +193,9 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetId string, call
 	return nil
 }
 
-func (c *Controller) ProcessRecording(ctx context.Context, rulesetId string, callId string, recordings []models.Recording) error {
+func (c *Controller) ProcessRecording(ctx context.Context, rulesetId string, callId string, recording *models.Recording) error {
 	// Set the recording on the conversation
-	err := c.DB.SetRecordings(ctx, rulesetId, callId, recordings)
+	err := c.DB.SetRecordings(ctx, rulesetId, callId, recording)
 	if err != nil {
 		log.Printf("Error setting recordings on conversation: %v", err)
 		return err
