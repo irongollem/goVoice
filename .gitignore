@@ -1,3 +1,4 @@
 .env
 /secrets
 /server
+/cmd/server/__debug_bin*

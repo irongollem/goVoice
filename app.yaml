@@ -13,5 +13,5 @@ handlers:
 env_variables:
   PORT: 8080
   ENV: production
-  GCP_PROJECT_ID: hconnect-1534342056131
+  GCP_PROJECT_ID: govoice-406116
   GIN_MODE: release

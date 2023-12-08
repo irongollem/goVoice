@@ -1,6 +1,7 @@
 package telnyx
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -41,7 +42,7 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 	c.Status(http.StatusOK)
 	log.Printf("Transcription received: %v", event)
 
-	ctx := c.Request.Context()
+	ctx := context.Background()
 	transcriptionData := event.Data.Payload.TranscriptionData
 	callId := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)

@@ -12,28 +12,33 @@ import (
 // MUTATORS
 
 func (f *FirestoreClient) AddConversation(ctx context.Context, rulesetId string, conversation *models.Conversation) error {
-	_, err := f.Client.Collection("rulesets").
+	foo, err := f.Client.Collection("rulesets").
 		Doc(rulesetId).
 		Collection("conversations").
 		Doc(conversation.ID).
 		Set(ctx, conversation)
+
+	log.Printf("Wrote to database: %v", foo)
 		
 	if err != nil {
+		log.Printf("Error writing conversation to firestore: %v", err)
 		return err
 	}
 	return nil
 }
 
 func (f *FirestoreClient) AddResponse(ctx context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error {
-	_, err := f.Client.Collection("rulesets").
+	docref := f.Client.Collection("rulesets").
 		Doc(rulesetId).
 		Collection("conversations").
-		Doc(conversationId).
-		Update(ctx, []firestore.Update{
-			{Path: "responses." + response.Purpose, Value: response.Response},
-		})
+		Doc(conversationId)
+		
+	_, err := docref.Set(ctx, map[string]interface{}{
+			"responses." + response.Purpose: response.Response},
+		firestore.MergeAll)
 		
 	if err != nil {
+		log.Printf("Error writing response to firestore: %v", err)
 		return err
 	}
 	return nil
@@ -49,6 +54,7 @@ func (f *FirestoreClient) SetRecordings(ctx context.Context, rulesetId string, c
 		})
 		
 	if err != nil {
+		log.Printf("Error writing recording to firestore: %v", err)
 		return err
 	}
 	return nil
@@ -64,6 +70,7 @@ func (f *FirestoreClient) SetConversationDone(ctx context.Context, rulesetId str
 		})
 		
 	if err != nil {
+		log.Printf("Error writing conversation done to firestore: %v", err)
 		return err
 	}
 	return nil
@@ -86,11 +93,13 @@ func (f *FirestoreClient) GetResponses (ctx context.Context, rulesetId string, c
 			break
 		}
 		if err != nil {
+			log.Printf("Error getting responses from firestore: %v", err)
 			return nil, err
 		}
 		
 		var response models.ConversationStepResponse
 		if err := doc.DataTo(&response); err != nil {
+			log.Printf("Error unmarshalling response from firestore: %v", err)
 			return nil, err
 		}
 		responses = append(responses, response)
