@@ -45,7 +45,6 @@ type Event struct {
 		} `json:"payload"`
 		// call.recording.saved
 		RecordType  string `json:"record_type"`
-		RecordingId string `json:"recording_id"`
 	} `json:"data"`
 	Meta struct {
 		Attempt     int    `json:"attempt"`

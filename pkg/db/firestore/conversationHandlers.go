@@ -10,15 +10,14 @@ import (
 )
 
 // MUTATORS
-
-func (f *FirestoreClient) AddConversation(ctx context.Context, rulesetId string, conversation *models.Conversation) error {
-	foo, err := f.Client.Collection("rulesets").
-		Doc(rulesetId).
+func (f *FirestoreClient) AddConversation(ctx context.Context, rulesetID string, conversation *models.Conversation) error {
+	res, err := f.Client.Collection("rulesets").
+		Doc(rulesetID).
 		Collection("conversations").
 		Doc(conversation.ID).
 		Set(ctx, conversation)
 
-	log.Printf("Wrote to database: %v", foo)
+	log.Printf("Wrote to database: %v, %v", conversation.ID, res)
 		
 	if err != nil {
 		log.Printf("Error writing conversation to firestore: %v", err)
@@ -27,11 +26,12 @@ func (f *FirestoreClient) AddConversation(ctx context.Context, rulesetId string,
 	return nil
 }
 
-func (f *FirestoreClient) AddResponse(ctx context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error {
+func (f *FirestoreClient) AddResponse(ctx context.Context, rulesetID string, conversationID string, response *models.ConversationStepResponse) error {
+	log.Printf("Adding response to firestore for %v: %v", rulesetID, response)
 	docref := f.Client.Collection("rulesets").
-		Doc(rulesetId).
+		Doc(rulesetID).
 		Collection("conversations").
-		Doc(conversationId)
+		Doc(conversationID)
 		
 	_, err := docref.Set(ctx, map[string]interface{}{
 			"responses." + response.Purpose: response.Response},
@@ -108,8 +108,8 @@ func (f *FirestoreClient) GetResponses (ctx context.Context, rulesetId string, c
 }
 
 // IsConversationComplete checks if a conversation is complete and returns the recording URL if it is.
-func (f *FirestoreClient) IsConversationComplete (ctx context.Context, rulesetId string, conversationId string) ([]models.Recording, error) {
-	doc, err := f.Client.Collection("rulesets").
+func (f *FirestoreClient) IsConversationComplete (ctx context.Context, rulesetId string, conversationId string) (*models.Recording, error) {
+	conversationDoc, err := f.Client.Collection("rulesets").
 		Doc(rulesetId).
 		Collection("conversations").
 		Doc(conversationId).
@@ -121,14 +121,14 @@ func (f *FirestoreClient) IsConversationComplete (ctx context.Context, rulesetId
 	}
 	
 	var conversation models.Conversation
-	if err := doc.DataTo(&conversation); err != nil {
+	if err := conversationDoc.DataTo(&conversation); err != nil {
 		log.Printf("Error unmarshalling conversation from firestore: %v", err)
 		return nil, err
 	}
-	recordingDone := len(conversation.Recordings) > 0
+	recordingDone := conversation.Recording != nil
 	
 	if conversation.ConversationDone && recordingDone {
-		return conversation.Recordings, nil
+		return conversation.Recording, nil
 	}
 	return nil, nil
 }

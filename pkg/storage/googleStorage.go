@@ -31,8 +31,8 @@ func NewGoogleStorageHandler(cfg *config.Config) (*GoogleStorageHandler, error) 
 	}, nil
 }
 
-func (h *GoogleStorageHandler) GetRecording(ctx context.Context, rulesetId string, callId string) (io.ReadCloser, error) {
-	h.DownloadFile(ctx, fmt.Sprintf("recording-%s-%s", rulesetId, callId))
+func (h *GoogleStorageHandler) GetRecording(ctx context.Context, rulesetID string, callID string) (io.ReadCloser, error) {
+	h.DownloadFile(ctx, fmt.Sprintf("recording-%s-%s", rulesetID, callID))
 	return nil, nil
 }
 

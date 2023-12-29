@@ -2,6 +2,7 @@ package telnyx
 
 import (
 	"context"
+	"goVoice/internal/models"
 	"log"
 	"net/http"
 
@@ -27,6 +28,10 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
 	log.Printf("Call started: %v", event)
+	state, err := decodeClientState(event.Data.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v", err)
+	}
 
 	// Start recording the call and start transcription
 	// Any further process should only start once we know transcription
@@ -34,7 +39,7 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	t.startTranscription(event)
 	t.startRecording(event)
 
-	t.ConvCtrl.StartConversation(event.Data.Payload.CallControlID)
+	t.ConvCtrl.StartConversation(state.RulesetID, event.Data.Payload.CallControlID)
 }
 
 func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
@@ -44,13 +49,13 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 
 	ctx := context.Background()
 	transcriptionData := event.Data.Payload.TranscriptionData
-	callId := event.Data.Payload.CallControlID
+	callID := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
 
-	t.ConvCtrl.ProcessTranscription(ctx, callId, transcriptionData.Transcript, state)
+	t.ConvCtrl.ProcessTranscription(ctx, callID, transcriptionData.Transcript, state)
 }
 
 func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
@@ -58,15 +63,19 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	c.Status(http.StatusOK)
 	log.Printf("Call ended: %v", event)
 
-	callId := event.Data.Payload.CallControlID
+	callID := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
 
-	ctx := c.Request.Context()
-	// TODO check if recording is done, if not, wait for it to finish
-	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callId)
+	ctx := context.Background()
+	err = t.ConvCtrl.DB.SetConversationDone(ctx, state.RulesetID, callID)
+	if err != nil {
+		log.Printf("Error setting conversation done: %v", err)
+		return // TODO: in its current state the conversation will be stuck in the DB
+	}
+	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callID)
 }
 
 /**
@@ -92,24 +101,21 @@ func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
-	log.Printf("Recording saved: %v", event.Data.RecordingId)
-	
-	callId := event.Data.Payload.CallControlID
-	recordingId := event.Data.RecordingId
+	log.Printf("Recording schema: %+v", event.Data)
+
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
+		return
 	}
+	rulesetID := state.RulesetID
+	callID := event.Data.Payload.CallControlID
+	url := event.Data.Payload.RecordingUrls.Mp3
 
-	ctx := c.Request.Context()
-	recChan, errChan := t.GetRecording(recordingId)
-	select {
-		case telnyxRecording := <- recChan:
-			genericRecording := convertToRecording(telnyxRecording)
-			t.ConvCtrl.ProcessRecording(ctx, state.RulesetID, callId, genericRecording)
-		case err := <- errChan:
-			log.Printf("Error getting recordings: %v", err)
-		}
+	t.ConvCtrl.ProcessRecording(context.Background(), rulesetID, callID, &models.Recording{
+		Url: url,
+		ConversationID: callID,
+	})
 }
 
 func (t *Telnyx) recordingErrorProcedure(c *gin.Context, event Event) {

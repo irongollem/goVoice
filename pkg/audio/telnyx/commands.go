@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"goVoice/internal/models"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -28,14 +29,9 @@ func (t *Telnyx) sendCommand(httpMethod string, payload interface{}, pathParams 
 	_, isNoiseSuppressionPayload := payload.(*NoiseSuppressionPayload)
 	_, isTranscriptionPayload := payload.(*TranscriptionPayload)
 
-	if !isSimplePayload && !isAnswerPayload && !isUpdateClientStatePayload && !isGatherPayload && !isRecordStartPayload && !isSpeakTextPayload && !isNoiseSuppressionPayload && !isTranscriptionPayload {
+	if payload != nil && !isSimplePayload && !isAnswerPayload && !isUpdateClientStatePayload && !isGatherPayload && !isRecordStartPayload && !isSpeakTextPayload && !isNoiseSuppressionPayload && !isTranscriptionPayload {
 		log.Printf("Unknown payload type: %T", payload)
 		return nil, fmt.Errorf("unknown payload type: %T", payload)
-	}
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		log.Printf("Error marshaling payload: %v", err)
-		return nil, err
 	}
 
 	newPath := ""
@@ -44,17 +40,32 @@ func (t *Telnyx) sendCommand(httpMethod string, payload interface{}, pathParams 
 	}
 	newURL := *t.APIUrl
 	newURL.Path = path.Join(newURL.Path, newPath)
-	
+
+	var req *http.Request
+	var err error
+	if payload != nil {
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			log.Printf("Error marshaling payload: %v", err)
+			return nil, err
+		}
+		req, err = http.NewRequest(httpMethod, newURL.String(), bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			log.Printf("Error creating request: %v", err)
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, err = http.NewRequest(httpMethod, newURL.String(), nil)
+		if err != nil {
+			log.Printf("Error creating request: %v", err)
+			return nil, err
+		}
+	}
+
 	var resp *http.Response
 	if err = retry.Do(
 		func() error {
-			req, err := http.NewRequest(httpMethod, newURL.String(), bytes.NewBuffer(payloadBytes))
-			if err != nil {
-				log.Printf("Error creating request: %v", err)
-				return err
-			}
-
-			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+t.APIKey)
 
 			dump, err := httputil.DumpRequest(req, true)
@@ -92,7 +103,7 @@ func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 	state, err := encodeClientState(&models.ClientState{
-		RulesetID:   event.Data.Payload.CallControlID,
+		RulesetID:   "LeeuwardenPilot", // FIXME this should be dynamic
 		CurrentStep: 0,
 	})
 	if err != nil {
@@ -133,7 +144,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 		ClientState:         event.Data.Payload.ClientState,
 		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
 		Language:            "nl", // TODO: try using auto_detect and talk other languages
-		TranscriptionEngine: "B",  // A is google, B is telnyx
+		TranscriptionEngine: "A",  // A is google, B is telnyx
 	}
 
 	go func() {
@@ -201,13 +212,13 @@ func (t *Telnyx) SpeakText(CallControlID string, text string, clientState *model
 	return done, errChan
 }
 
-func (t *Telnyx) EndCall(callId string) (chan bool, chan error) {
-	log.Printf("Ending call %s", callId)
+func (t *Telnyx) EndCall(callID string) (chan bool, chan error) {
+	log.Printf("Ending call %s", callID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(callId, "hangup", nil)
+		_, err := t.sendCommandToCallCommandsAPI(callID, "hangup", nil)
 		if err != nil {
 			log.Printf("Error ending call: %v", err)
 			errChan <- err
@@ -232,6 +243,17 @@ func (t *Telnyx) GetRecording(recordingId string) (chan *Recording, chan error) 
 		}
 		defer res.Body.Close()
 
+		log.Println("-------- Response Body Start --------")
+		// Read and log the response body
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Printf("Error reading response body: %v", err)
+			errChan <- err
+			return
+		}
+		log.Println(string(body))
+		log.Println("-------- Response Body End --------")
+
 		var recordingResponse RecordingResponse
 		if err := json.NewDecoder(res.Body).Decode(&recordingResponse); err != nil {
 			log.Printf("Error decoding recordings: %v", err)
@@ -240,6 +262,42 @@ func (t *Telnyx) GetRecording(recordingId string) (chan *Recording, chan error) 
 		}
 
 		done <- recordingResponse.Data
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan error) {
+	log.Printf("Getting recording mp3: %s", recording.ID)
+	done := make(chan []byte)
+	errChan := make(chan error, 1)
+
+	go func() {
+		req, err := http.NewRequest("GET", recording.Url, nil)
+		if err != nil {
+			log.Printf("Error creating request: %v", err)
+			errChan <- err
+			return
+		}
+
+		req.Header.Set("Authorization", "Bearer "+t.APIKey)
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Printf("Error getting recording mp3: %v", err)
+			errChan <- err
+			return
+		}
+		defer res.Body.Close()
+
+		mp3Bytes, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Printf("Error reading recording mp3: %v", err)
+			errChan <- err
+			return
+		}
+
+		done <- mp3Bytes
 	}()
 
 	return done, errChan

@@ -9,14 +9,15 @@ import (
 
 type DbProvider interface {
 	// Ruleset handlers
-	GetRuleSet(ctx context.Context, rulesetId string) (*models.ConversationRuleSet, error)
+	AddRuleset(ctx context.Context, ruleset *models.ConversationRuleSet) error
+	GetRuleSet(ctx context.Context, rulesetID string) (*models.ConversationRuleSet, error)
 	// Conversation handlers
-	GetResponses(ctx context.Context, rulesetId string, conversationId string) ([]models.ConversationStepResponse, error)
-	AddConversation(ctx context.Context, rulesetId string, conversation *models.Conversation) error
-	AddResponse(ctx context.Context, rulesetId string, conversationId string, response *models.ConversationStepResponse) error
-	SetRecordings(ctx context.Context, rulesetId string, conversationId string, recording *models.Recording) error
-	SetConversationDone(ctx context.Context, rulesetId string, conversationId string) error
-	IsConversationComplete(ctx context.Context, rulesetId string, conversationId string) ([]models.Recording, error)
+	GetResponses(ctx context.Context, rulesetID string, conversationID string) ([]models.ConversationStepResponse, error)
+	AddConversation(ctx context.Context, rulesetID string, conversation *models.Conversation) error
+	AddResponse(ctx context.Context, rulesetID string, conversationID string, response *models.ConversationStepResponse) error
+	SetRecordings(ctx context.Context, rulesetID string, conversationID string, recording *models.Recording) error
+	SetConversationDone(ctx context.Context, rulesetID string, conversationID string) error
+	IsConversationComplete(ctx context.Context, rulesetID string, conversationID string) (*models.Recording, error)
 }
 
 func InitiateDBClient(cfg *config.Config) (DbProvider, error) {

@@ -53,7 +53,6 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 
 	callType := event.Data.EventType
 
-
 	switch callType {
 	case "call.initiated":
 		t.answerProcedure(c, event)
