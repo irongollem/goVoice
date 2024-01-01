@@ -15,15 +15,15 @@ type ConversationRuleSet struct {
 	Simple bool    `json:"simple" firestore:"simple"`
 	Client *Client `json:"client" firestore:"client"`
 
-	Steps         []ConversationStep `json:"steps" firestore:"steps"`
+	Steps []ConversationStep `json:"steps" firestore:"steps"`
 }
 
 type ConversationStep struct {
-	UserType string  `json:"userType" firestore:"userType"`
-	Text     string  `json:"text" firestore:"text"`
-	Prompt   *Prompt `json:"prompt" firestore:"prompt"`
-	Purpose  string  `json:"purpose" firestore:"purpose"`
-	AudioFile string `json:"audioFile" firestore:"audioFile"`
+	UserType  string  `json:"userType" firestore:"userType"`
+	Text      string  `json:"text" firestore:"text"`
+	Prompt    *Prompt `json:"prompt" firestore:"prompt"`
+	Purpose   string  `json:"purpose" firestore:"purpose"`
+	AudioFile string  `json:"audioFile" firestore:"audioFile"`
 }
 
 type ConversationStepResponse struct {
@@ -33,11 +33,11 @@ type ConversationStepResponse struct {
 
 type Conversation struct {
 	// conversation.ID should always be the same as the CallControlId
-	ID               string                     `firestore:"id"`
-	RulesetID        string                     `firestore:"rulesetId"`
-	Responses        []ConversationStepResponse `firestore:"responses"`
-	Recording        *Recording                 `firestore:"recordings"`
-	ConversationDone bool                       `firestore:"conversationDone"`
+	ID               string            `firestore:"id"`
+	RulesetID        string            `firestore:"rulesetId"`
+	Responses        map[string]string `firestore:"responses"`
+	Recordings       []Recording       `firestore:"recordings"`
+	ConversationDone bool              `firestore:"conversationDone"`
 }
 
 /* ClientState with telnyx is a freeform, base64 encoded string to pass back and forth
@@ -45,12 +45,15 @@ type Conversation struct {
  * any state we want. Feel free to adjust this as needed.
  */
 type ClientState struct {
-	RulesetID   string `json:"rulesetId"`
-	CurrentStep int    `json:"currentStep"`
+	RulesetID      string `json:"rulesetId"`
+	Purpose        string `json:"purpose"`
+	CurrentStep    int    `json:"currentStep"`
+	RecordingCount int    `json:"recordingCount"`
 }
 
 type Recording struct {
 	ID             string `json:"id" firestore:"id"`
 	Url            string `json:"url" firestore:"url"`
 	ConversationID string `json:"conversationId" firestore:"conversationId"`
+	Purpose        string `json:"purpose" firestore:"purpose"`
 }

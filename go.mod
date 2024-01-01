@@ -10,7 +10,10 @@ require (
 	google.golang.org/api v0.149.0
 )
 
-require google.golang.org/appengine v1.6.7 // indirect
+require (
+	github.com/sashabaranov/go-openai v1.17.9 // indirect
+	google.golang.org/appengine v1.6.7 // indirect
+)
 
 require (
 	cloud.google.com/go v0.110.10 // indirect

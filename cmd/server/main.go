@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"goVoice/internal/api"
 	"goVoice/internal/config"
+	"goVoice/pkg/ai"
 	"goVoice/pkg/db"
 	"goVoice/pkg/storage"
 	"log"
@@ -27,6 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create db handler: %v", err)
 	}
+	aiHandler := ai.InitiateAIProvider(cfg)
 
 	router := gin.Default()
 	router.GET("/favicon.ico", func(c *gin.Context) {
@@ -35,7 +37,7 @@ func main() {
 	// Create the API for the UI
 	api.NewWebClientAPI(cfg, storageHandler, dbHandler, router)
 	// Create the API for the call manager
-	api.NewVoiceAPI(cfg, storageHandler, dbHandler, router)
+	api.NewVoiceAPI(cfg, storageHandler, dbHandler, aiHandler, router)
 	if err := router.Run(cfg.ApiPort); err != nil {
 		log.Fatalf("Failed to start web client server: %v", err)
 	}

@@ -33,12 +33,6 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 		log.Printf("Error decoding client state: %v", err)
 	}
 
-	// Start recording the call and start transcription
-	// Any further process should only start once we know transcription
-	// has been started
-	t.startTranscription(event)
-	t.startRecording(event)
-
 	t.ConvCtrl.StartConversation(state.RulesetID, event.Data.Payload.CallControlID)
 }
 
@@ -75,7 +69,7 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 		log.Printf("Error setting conversation done: %v", err)
 		return // TODO: in its current state the conversation will be stuck in the DB
 	}
-	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callID)
+	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callID, state.RecordingCount)
 }
 
 /**
@@ -85,6 +79,8 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	t.stopTranscription(event)
+	t.stopRecording(event)
 	log.Print("Speak started")
 }
 
@@ -95,6 +91,8 @@ func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 	// respond to the incoming hook immediately
 	c.Status(http.StatusOK)
+	t.startTranscription(event)
+	t.startRecording(event)
 	log.Print("Speak ended")
 }
 
@@ -115,6 +113,7 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	t.ConvCtrl.ProcessRecording(context.Background(), rulesetID, callID, &models.Recording{
 		Url: url,
 		ConversationID: callID,
+		Purpose: state.Purpose,
 	})
 }
 

@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"goVoice/internal/email"
 	"goVoice/internal/models"
+	"goVoice/pkg/ai"
 	"goVoice/pkg/audio"
 	"goVoice/pkg/db"
 	"goVoice/pkg/storage"
 	"log"
+	"sync"
+	"time"
 )
 
 // The conversation controller orchestrates the incoming audio, sends it
@@ -20,6 +23,7 @@ type Controller struct {
 	Provider audio.CallProvider
 	Storage  storage.StorageProvider
 	DB       db.DbProvider
+	AI       ai.AIProvider
 	email    email.EmailProvider
 }
 
@@ -33,7 +37,7 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 	c.DB.AddConversation(context.Background(), rulesetID, &models.Conversation{
 		ID:        callID,
 		RulesetID: rulesetID,
-		Responses: []models.ConversationStepResponse{},
+		Responses: make(map[string]string),
 	})
 
 	// Grab the first step as conversation opener
@@ -41,6 +45,7 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 	clientState := &models.ClientState{
 		RulesetID:   rulesetID,
 		CurrentStep: 0,
+		Purpose: 	 opener.Purpose,
 	}
 
 	doneChan, errChan := c.Provider.SpeakText(callID, opener.Text, clientState)
@@ -72,9 +77,13 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 			return
 		}
 	}
-
-	c.storeTranscription(ctx, callID, state, rules, transcript)
-
+	foo, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
+	if err != nil {
+		log.Printf("Error validating answer: %v", err)
+		c.storeTranscription(ctx, callID, state, rules, transcript)
+	} else {
+		c.storeTranscription(ctx, callID, state, rules, foo.Answer)
+	}
 	step, err := c.getResponse(rules, state, transcript)
 	if err != nil {
 		log.Printf("Error getting response for client: %v", err)
@@ -85,6 +94,8 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 	nextState := models.ClientState{
 		RulesetID:   state.RulesetID,
 		CurrentStep: state.CurrentStep + 1,
+		Purpose: 	 rules.Steps[state.CurrentStep+1].Purpose,
+		RecordingCount: state.RecordingCount,
 	}
 	done, errChan := c.Provider.SpeakText(callID, step.Text, &nextState)
 	select {
@@ -133,16 +144,35 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 	}
 }
 
-func (c *Controller) EndConversation(ctx context.Context, rulesetID string, callID string) error {
-	recording, err := c.DB.IsConversationComplete(ctx, rulesetID, callID)
+func (c *Controller) EndConversation(ctx context.Context, rulesetID string, callID string, recordingCount int) error {
+	conversation, err := c.DB.GetConversation(ctx, rulesetID, callID)
 	if err != nil {
-		log.Printf("Error checking if conversation is complete: %v", err)
+		log.Printf("Error getting responses from database: %v", err)
 		return err
 	}
-	if recording == nil {
-		log.Print("Conversation is not complete")
-		return nil
-	}
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	timeout := time.After(5 * time.Minute)
+	
+	var recordings []*models.Recording
+	Loop:
+		for {
+			select {
+				case <-timeout:
+					log.Printf("Timeout waiting for conversation to end, continuing incomplete for %v", callID)
+					break Loop
+				case <-ticker.C:
+					recordings, err := c.DB.GetRecordings(ctx, rulesetID, callID)
+					if err != nil {
+						log.Printf("Error checking if conversation is complete: %v", err)
+						return err
+					}
+					if recordings != nil && len(recordings) == recordingCount {
+						break Loop
+					}
+			}
+		}
 
 	ruleset, err := c.DB.GetRuleSet(ctx, rulesetID)
 	if err != nil {
@@ -150,33 +180,59 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 		return err
 	}
 
-	body, _ := c.retrieveResponsesAsTable(ctx, ruleset, callID)
+	body := formatEmailBody(conversation.Responses, rulesetID, ruleset.Title, callID)
+	var attachments [][]byte
+	var attachmentNames []string
+	var wg sync.WaitGroup
+	wg.Add(len(recordings))
 
-	recChan, errChan := c.Provider.GetRecordingMp3(recording)
-	select {
-	case recording := <-recChan:
-		filename := fmt.Sprintf("%s_%s-%s.mp3", rulesetID, ruleset.Title, callID)
+	errChan := make(chan error, len(recordings))
 
-		err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, *body, recording, filename)
-		if err != nil {
-			log.Printf("Error sending email: %v", err)
-			return err
-		}
-		return nil
-	case err := <-errChan:
+	for _, recording := range recordings {
+		go func (recording *models.Recording) {
+			defer wg.Done()
+			
+			recChan, recErrChan := c.Provider.GetRecordingMp3(recording)
+			recErr := <-recErrChan
+			if err != nil {
+				errChan <- recErr
+				return
+			}
+
+			attachments = append(attachments, <-recChan)
+			attachmentNames = append(attachmentNames, fmt.Sprintf("%s_%s-%s-%s.mp3", rulesetID, ruleset.Title, callID, recording.Purpose))
+		}(recording)
+	}
+
+	wg.Wait()
+
+	close(errChan)
+	if err, ok := <-errChan; ok {
 		log.Printf("Error getting recording: %v", err)
 		return err
 	}
-	// TODO: delete the recording from storage and conversation from db if data is send off successfully
+	
+	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, attachments, attachmentNames)
+	if err != nil {
+		log.Printf("Error sending email: %v", err)
+		return err
+	}
+
+	err = c.DB.DeleteConversation(ctx, rulesetID, callID)
+	if err != nil {
+		log.Printf("Error deleting conversation from database: %v", err)
+		return err
+	}
+	
+	return nil
 }
 
 func (c *Controller) ProcessRecording(ctx context.Context, rulesetId string, callID string, recording *models.Recording) error {
 	// Set the recording on the conversation
-	err := c.DB.SetRecordings(ctx, rulesetId, callID, recording)
+	err := c.DB.SetRecording(ctx, rulesetId, callID, recording)
 	if err != nil {
 		log.Printf("Error setting recordings on conversation: %v", err)
 		return err
 	}
-	// If the conversation is not complete, EndConversation will deal with that
-	return c.EndConversation(ctx, rulesetId, callID)
+	return nil
 }

@@ -19,6 +19,7 @@ type Config struct {
 	TelnyxAppId        string
 	GCPProjectID       string
 	EmailPassword      string
+	OpenAIKey          string
 }
 
 func LoadConfig() (*Config, error) {
@@ -43,6 +44,7 @@ func LoadConfigFromEnv() (*Config, error) {
 		TelnyxAppId:        os.Getenv("TELNYX_APP_ID"),
 		GCPProjectID:       os.Getenv("GCP_PROJECT_ID"),
 		EmailPassword:      os.Getenv("EMAIL_PASSWORD"),
+		OpenAIKey:          os.Getenv("OPENAI_KEY"),
 	}, nil
 }
 

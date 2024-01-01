@@ -23,7 +23,7 @@ func NewEmailProvider(cfg *config.Config, storage storage.StorageProvider) *Emai
 	}
 }
 
-func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject, body string, attachment []byte, attachmentName string) error {
+func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject, body string, attachments [][]byte, attachmentNames []string) error {
 	from := "noreply@smartaisolutions.nl"
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
@@ -49,15 +49,17 @@ func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject
 	message.WriteString("Content-Transfer-Encoding: 7bit\n")
 	message.WriteString("\n" + body + "\n")
 
-	// Encode attachment
-	encodedRecording := base64.StdEncoding.EncodeToString(attachment)
+	for i, attachment := range attachments {
+		// Encode attachment
+		encodedRecording := base64.StdEncoding.EncodeToString(attachment)
 
-	// Add attachment
-	message.WriteString("\n--MULTIPART-MIXED-BOUNDARY\n")
-	message.WriteString("Content-Type: audio/mpeg\n") // If you need to send other types of files, make this dynamic
-	message.WriteString("Content-Transfer-Encoding: base64\n")
-	message.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\n", attachmentName))
-	message.WriteString(fmt.Sprintf("\n%s\n", encodedRecording))
+		// Add attachment
+		message.WriteString("\n--MULTIPART-MIXED-BOUNDARY\n")
+		message.WriteString("Content-Type: audio/mpeg\n") // If you need to send other types of files, make this dynamic
+		message.WriteString("Content-Transfer-Encoding: base64\n")
+		message.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\n", attachmentNames[i]))
+		message.WriteString(fmt.Sprintf("\n%s\n", encodedRecording))
+	}
 	message.WriteString("\n--MULTIPART-MIXED-BOUNDARY--")
 
 	auth := smtp.PlainAuth("", from, p.password, smtpHost)

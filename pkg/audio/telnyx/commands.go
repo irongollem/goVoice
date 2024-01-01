@@ -144,7 +144,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 		ClientState:         event.Data.Payload.ClientState,
 		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
 		Language:            "nl", // TODO: try using auto_detect and talk other languages
-		TranscriptionEngine: "A",  // A is google, B is telnyx
+		TranscriptionEngine: "B",  // A is google, B is telnyx
 	}
 
 	go func() {
@@ -159,13 +159,49 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
+func (t *Telnyx) stopTranscription(event Event) (chan bool, chan error) {
+	log.Printf("Stopping transcription for call %s", event.Data.Payload.CallControlID)
+	done := make(chan bool)
+	errChan := make(chan error, 1)
+
+	payload := &SimplePayload{
+		ClientState: event.Data.Payload.ClientState,
+		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "transcription_stop", event.Data.Payload.ClientState),
+	}
+	
+	go func() {
+		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_stop", payload)
+		if err != nil {
+			log.Printf("Error stopping transcription: %v", err)
+			errChan <- err
+		}
+		done <- true
+	}()
+
+	return done, errChan
+}
+
 func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	log.Printf("Starting recording for call %s", event.Data.Payload.CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
+	var newState string
+	state, err := decodeClientState(event.Data.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v", err)
+		newState = event.Data.Payload.ClientState
+	} else {
+		state.RecordingCount++
+		newState, err = encodeClientState(state)
+		if err != nil {
+			log.Printf("Error encoding client state: %v", err)
+			newState = event.Data.Payload.ClientState
+		}
+	}
+
 	recordingPayload := &RecordStartPayload{
-		ClientState: event.Data.Payload.ClientState,
+		ClientState: newState,
 		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_start", event.Data.Payload.ClientState),
 		Format:      "mp3",
 		Channels:    "single",
@@ -176,6 +212,28 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_start", recordingPayload)
 		if err != nil {
 			log.Printf("Error starting recording: %v", err)
+			errChan <- err
+		}
+		done <- true
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) stopRecording(event Event) (chan bool, chan error) {
+	log.Printf("Stopping recording for call %s", event.Data.Payload.CallControlID)
+	done := make(chan bool)
+	errChan := make(chan error, 1)
+
+	payload := &SimplePayload{
+		ClientState: event.Data.Payload.ClientState,
+		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_stop", event.Data.Payload.ClientState),
+	}
+
+	go func() {
+		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_stop", payload)
+		if err != nil {
+			log.Printf("Error stopping recording: %v", err)
 			errChan <- err
 		}
 		done <- true
