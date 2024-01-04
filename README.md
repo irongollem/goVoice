@@ -2,15 +2,17 @@
 
 ## Description
 
-goVoice is a simple voice driven call agent. It is currently in development and is not ready for use.
+goVoice is a voice driven call agent based on golang. It is currently in development and nearing a first BETA release.
 
 ## Installation
 
 ### Prerequisites
 
 * [Go](https://golang.org/doc/install)
-* [Twilio](https://www.twilio.com/try-twilio) account
+* [Telnyx](https://telnyx.com/) account (for receiving calls and interacting with the callee)
 * [ngrok](https://ngrok.com/download) (optional for local testing)
+* [openAI](https://openai.com/) account (for validating answers)
+* [gmail](https://mail.google.com/) account (for sending the email)
 
 ### Install
 
@@ -34,43 +36,58 @@ root/
 │
 ├── internal/
 │   ├── api/
-│   │   ├── handlers/ # HTTP handlers
-│   │   ├── middleware/ # HTTP middleware
-│   │   └── routes/ # HTTP routes
+│   │   ├── voiceApi.go # HTTP handlers for the voice API
+│   │   ├── webClientApi.go # HTTP handlers for the web client API
+│   ├── app/
+│   │   ├── audioProcessor/ # Currently not used
+│   │   └── conversation/ # Conversation Controller (brain of the app)
+│   │         ├── controller.go # The actual controller
+│   │         └── helpers.go # Helper functions dealing with the conversation
+│   ├── config/
+│   │   └── config.go # Configuration and environment variables
+│   ├── email/
+│   │   └── email.go # Email client
+│   └── models/
+│       └── models.go # Any internal models
 │
 ├── pkg/
+│   ├── ai/
+│   │   ├── openAi/
+│   │   │   └── openAi.go # OpenAI client
+│   │   ├── ai.go # AI interface
+│   │   └── models.go # AI specific response model
 │   ├── audio/
-│   │   ├── twilio/
-│   │   │   ├── client.go # Twilio client
-│   │   │   ├── recorder.go # Twilio recorder
-│   │   │   └── transcriber.go # Twilio transcriber
-│   │   └── google/
-│   │       ├── client.go # Google client
-│   │       ├── recorder.go # Google recorder
-│   │       └── transcriber.go # Google transcriber
-│   ├── llt/
-│   │   ├── client.go # LLT client
+│   │   ├── audio.go # Audio interface
+│   │   └── telnyx/
+│   │       ├── commands_test.go
+│   │       ├── commands.go # Telnyx commands to trigger the telnyx API
+│   │       ├── commandStructs.go # Models describing the required body for the telnyx API
+│   │       ├── dto.go # Models derscribing the response from the telnyx API
+│   │       ├── helpers.go # Helper functions for the telnyx API
+│   │       ├── procedures.go # Hook handlers
+│   │       └── telnyx.go # API router for the incomming hooks implementing the audio voiceApi interface
+│   ├── db/
+│   │   ├── db.go # DB interface
+│   │   └── firestore/
+│   │       ├── conversationHandlers.go # Firestore specific conversation handlers
+│   │       ├── firestore.go # Firestore client implementing the DB interface
+│   │       └── rulesetHandlers.go # Firestore specific ruleset handlers
+│   ├── host/
+│   │   └── host.go # File dealing with security if incoming requests
 │   ├── storage/
-│   │   ├── dynamodb/ # placeholder until we chose a db provider
-│   │   │   ├── client.go # DynamoDB client
-│   │   ├── cloud/
-│   │   │   ├── client.go # Cloud client for storage
-│
-├── config/
-│   ├── config.go # Configuration
-│
-├── tests/
-│   ├── integration/
-│   ├── unit/
-│
+│   │   ├── storage.go # Storage interface
+│   │   └── googleStorage.go # Google Storage client implementing the storage interface (bucket)
+├── .gcloudignore
 ├── .gitignore
+├── app.yaml
+├── cloudbuild.yaml (not yet working)
 ├── go.mod
 ├── go.sum
-├── LICENSE
+├── LICENSE.md
+├── pilot.json # (temporary file describing the initial pilot's ruleset)
 └── README.md
-└── Dockerfile
 ```
 
 ## License
 
-None, as of yet this is a propriatary project owned by CroCode BV, the Netherlands.
+Proprietary License (see [LICENSE.MD](LICENSE.MD)).
