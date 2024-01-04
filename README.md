@@ -16,19 +16,46 @@ goVoice is a voice driven call agent based on golang. It is currently in develop
 
 ### Install
 
-```bash
-//
+```sh
 git clone git@github.com:irongollem/goVoice.git
 go mod download
 ```
 
+Setup your .env file (see [.env.example](.env.example)).
+
 ## Usage
 
-TBD
+Run locally by running `go run cmd/server/main.go` or build and run the binary.
+For running this in vscode (included in the repo) you might want to setup a `.vscode/launch.json` file with the following:
+
+```sh
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "Launch Package",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/server",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+    }
+  ]
+}
+```
+
+Then you can simply run and debug it from the console. Since most of it's behavior is responsive to incoming calls, you might want to use [ngrok](https://ngrok.com/) to expose your local server to the internet. You can do this by running `ngrok http 8080` (assuming you are running the server on port 8080). Then using the ngrok url as the webhook url in your telnyx dashboard followed by `/call` (e.g. `https://12345678.ngrok.io/call`).
+
+The app itself is deployed on appEngine for now and can be deployed by running `gcloud app deploy` (see [app.yaml](app.yaml)).
 
 ## Project structure
 
-```bash
+```sh
 root/
 ├── cmd/
 │   └── server/
