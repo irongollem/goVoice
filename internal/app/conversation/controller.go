@@ -47,8 +47,16 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 		CurrentStep: 0,
 		Purpose: 	 opener.Purpose,
 	}
+	var doneChan chan bool
+	var errChan chan error
+	if (opener.AudioURL != "") {
+		doneChan, errChan = c.Provider.PlayAudio(callID, opener.AudioURL, clientState)
+	} else if opener.Prompt != nil {
+		// TODO: implement speak from prompt
+	} else {
+		doneChan, errChan = c.Provider.SpeakText(callID, opener.Text, clientState)
+	}
 
-	doneChan, errChan := c.Provider.SpeakText(callID, opener.Text, clientState)
 	select {
 	case <-doneChan:
 		log.Printf("Successfully sent conversation opener to caller")

@@ -77,3 +77,16 @@ type TranscriptionPayload struct {
 	TranscriptionEngine string `json:"transcription_engine,omitempty"` // Default "A" (google), other option: "B" (telnyx)
 	CommandID           string `json:"command_id,omitempty"`
 }
+
+type PlayAudio struct {
+	AudioUrl        string `json:"audio_url,omitempty"`  // Cannot use MediaName and AudioUrl at the same time
+	MediaName       string `json:"media_name,omitempty"` // Cannot use MediaName and AudioUrl at the same time (MediaName is the name of the audio file uploaded to Telnyx)
+	Loop            int    `json:"loop,omitempty"`
+	Overlay         bool   `json:"overlay,omitempty"`
+	Stop            string `json:"stop,omitempty"`             // can be "current" or "all"
+	TargetLegs      string `json:"target_legs,omitempty"`      // can be "self", "opposite" or "both"
+	CacheAudio      bool   `json:"cache_audio,omitempty"`      // default true
+	PlaybackContent string `json:"playback_content,omitempty"` // optional base64 encoded audio mp3 file.
+	ClientState     string `json:"client_state,omitempty"`
+	CommandID       string `json:"command_id,omitempty"`
+}

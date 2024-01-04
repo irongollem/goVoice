@@ -26,10 +26,11 @@ func (t *Telnyx) sendCommand(httpMethod string, payload interface{}, pathParams 
 	_, isGatherPayload := payload.(*GatherPayload)
 	_, isRecordStartPayload := payload.(*RecordStartPayload)
 	_, isSpeakTextPayload := payload.(*SpeakTextPayload)
+	_, isPlayAudioPayload := payload.(*PlayAudio)
 	_, isNoiseSuppressionPayload := payload.(*NoiseSuppressionPayload)
 	_, isTranscriptionPayload := payload.(*TranscriptionPayload)
 
-	if payload != nil && !isSimplePayload && !isAnswerPayload && !isUpdateClientStatePayload && !isGatherPayload && !isRecordStartPayload && !isSpeakTextPayload && !isNoiseSuppressionPayload && !isTranscriptionPayload {
+	if payload != nil && !isSimplePayload && !isAnswerPayload && !isUpdateClientStatePayload && !isGatherPayload && !isRecordStartPayload && !isSpeakTextPayload && !isPlayAudioPayload && !isNoiseSuppressionPayload && !isTranscriptionPayload {
 		log.Printf("Unknown payload type: %T", payload)
 		return nil, fmt.Errorf("unknown payload type: %T", payload)
 	}
@@ -143,7 +144,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 	transcriptionPayload := &TranscriptionPayload{
 		ClientState:         event.Data.Payload.ClientState,
 		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
-		Language:            "nl", // TODO: try using auto_detect and talk other languages
+		Language:            "nl",
 		TranscriptionEngine: "B",  // A is google, B is telnyx
 	}
 
@@ -356,6 +357,31 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 		}
 
 		done <- mp3Bytes
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) playAudioUrl(callControlID string, url string, clientState *models.ClientState)(chan bool, chan error) {
+	log.Printf("Playing audio url: %s", url)
+	done := make(chan bool)
+	errChan := make(chan error, 1)
+
+	state, _ := encodeClientState(clientState)
+
+	payload := &PlayAudio{
+		CommandID:   generateCommandID(callControlID, "playAudio", state),
+		AudioUrl: url,
+		ClientState: state,
+	}
+
+	go func() {
+		_, err := t.sendCommandToCallCommandsAPI(callControlID, "playback_start", payload)
+		if err != nil {
+			log.Printf("Error playing audio url: %v", err)
+			errChan <- err
+		}
+		done <- true
 	}()
 
 	return done, errChan

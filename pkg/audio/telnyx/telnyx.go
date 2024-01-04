@@ -70,6 +70,10 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 		t.recordingErrorProcedure(c, event)
 	case "call.transcription":
 		t.transcriptionProcedure(c, event)
+	case "call.playback.started":
+		t.playbackStartedProcedure(c, event)
+	case "call.playback.ended":
+		t.playbackEndedProcedure(c, event)
 	// case "streaming.started":
 	// 	// When a call is answered using a socket, its content will be streamed
 	// 	c.AbortWithStatus(http.StatusNotFound)
