@@ -11,32 +11,38 @@
       "userType": "agent",
       "text": "Welkom bij de Gemeente Leeuwarden. U spreekt met de spraak assistent. Bij mij kunt u een melding doorgeven als iets kapot is, of beter kan in uw woon-, werk-, of leefomgeving. Ik stel u een paar vragen. Als u de vraag beantwoord heeft, gaat u vanzelf door naar de volgende vraag. Wat is uw melding? Vertel zoveel mogelijk details over wat er aan de hand is.",
       "ssml": "<speak>Welkom bij de Gemeente Leeuwarden. U spreekt met de spraak assistent. Bij mij kunt u een <emphasis>melding</emphasis> doorgeven als iets kapot is, of beter kan in uw woon-,<break x-weak> werk-,<break x-weak> of leefomgeving. Ik stel u een paar vragen. Als u de vraag beantwoord heeft, gaat u vanzelf door naar de volgende vraag. Wat is uw melding? Vertel zoveel mogelijk details over wat er aan de hand is.</speak>",
-      "purpose": "melding"
+      "purpose": "melding",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/welkom.wav"
     },
     {
       "userType":"agent",
       "text": "Wat is de locatie van de melding? Spreek in ieder geval het adres en de plaatsnaam in. Extra details over de precieze locatie mag u ook in spreken.",
-      "purpose": "locatie"
+      "purpose": "locatie",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/locatie.wav"
     },
     {
       "userType": "agent",
       "text": "Bedankt voor uw melding. Wij sturen de melding door naar de verantwoordelijke afdeling en pakken deze zo spoedig mogelijk op. Als er nog vragen zijn over de melding, willen wij graag contact met u opnemen. Daarom vragen wij om uw naam, telefoonnummer en e-mailadres. Wilt u dit liever niet, verbreek dan nu de verbinding. Spreek uw naam in.",
-      "purpose": "naam"
+      "purpose": "naam",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/naam.wav"
     },
     {
       "userType": "agent",
       "text": "Spreek uw telefoonnummer in",
-      "purpose": "telefoon"
+      "purpose": "telefoon",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/telefoon.wav"
     },
     {
       "userType": "agent",
       "text": "Spreek uw e-mailadres in.",
-      "purpose": "email"
+      "purpose": "email",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/email.wav"
     },
     {
       "userType": "agent",
       "text": "Dank u wel. Wij wensen u een fijne dag",
-      "purpose": "none"
+      "purpose": "none",
+      "audioURL": "https://accountspeechteststorage.blob.core.windows.net/voiceassistant/einde.wav"
     }
   ]
 }

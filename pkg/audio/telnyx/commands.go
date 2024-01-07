@@ -362,7 +362,7 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 	return done, errChan
 }
 
-func (t *Telnyx) playAudioUrl(callControlID string, url string, clientState *models.ClientState)(chan bool, chan error) {
+func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *models.ClientState)(chan bool, chan error) {
 	log.Printf("Playing audio url: %s", url)
 	done := make(chan bool)
 	errChan := make(chan error, 1)

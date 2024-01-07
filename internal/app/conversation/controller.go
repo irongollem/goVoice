@@ -42,20 +42,12 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 
 	// Grab the first step as conversation opener
 	opener := ruleSet.Steps[0]
-	clientState := &models.ClientState{
+	clientState := models.ClientState{
 		RulesetID:   rulesetID,
 		CurrentStep: 0,
 		Purpose: 	 opener.Purpose,
 	}
-	var doneChan chan bool
-	var errChan chan error
-	if (opener.AudioURL != "") {
-		doneChan, errChan = c.Provider.PlayAudio(callID, opener.AudioURL, clientState)
-	} else if opener.Prompt != nil {
-		// TODO: implement speak from prompt
-	} else {
-		doneChan, errChan = c.Provider.SpeakText(callID, opener.Text, clientState)
-	}
+	doneChan, errChan := c.broadcastNextStep(callID, &clientState, opener)
 
 	select {
 	case <-doneChan:
@@ -105,7 +97,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 		Purpose: 	 rules.Steps[state.CurrentStep+1].Purpose,
 		RecordingCount: state.RecordingCount,
 	}
-	done, errChan := c.Provider.SpeakText(callID, step.Text, &nextState)
+	done, errChan := c.broadcastNextStep(callID, &nextState, step)
 	select {
 	case <-done:
 		return

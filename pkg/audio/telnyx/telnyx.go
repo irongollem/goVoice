@@ -74,11 +74,6 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 		t.playbackStartedProcedure(c, event)
 	case "call.playback.ended":
 		t.playbackEndedProcedure(c, event)
-	// case "streaming.started":
-	// 	// When a call is answered using a socket, its content will be streamed
-	// 	c.AbortWithStatus(http.StatusNotFound)
-	// case "streaming.stopped":
-	// 	c.AbortWithStatus(http.StatusNotFound)
 	default:
 		log.Printf("Unknown event type: %s received", callType)
 		c.Status(http.StatusOK)
