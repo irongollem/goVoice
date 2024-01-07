@@ -27,11 +27,11 @@ func formatEmailBody(responses map[string]string, rulesetID string, rulesetTitle
 }
 
 func (c *Controller) validateAnswer(answer string, step *models.ConversationStep) (*ai.ValidatedAnswer, error) {
-	system := `You are a questionaire validator who is given answers in Dutch in the following format
+	system := `You are a questionaire validator who is given answers in Dutch (quite possibly with a Frisian dialect) in the following format
 		{ question: <question>, purpose: <purpose>, answer: <answer> }. The answers are transscribed from audio and might be incorrectly transcribed.
 		Also they might be incomplete as the user is taking a short pause.
-		I want you to try and interpret the answer and correct them where possible. Then I want you to 
-		answer give an estimate if the answer is complete or not. Return this in the following format:
+		I want you to try and interpret the answer (if possible based on the given question) and correct them where possible. Then I want you to 
+		give an estimate if the answer is complete or not. Return this in the following format:
 		{purpose: <purpose>, answer: <answer>, <complete>: <true/false>} without any padding or fluff so I can
 		directly use it in my system.`
 
