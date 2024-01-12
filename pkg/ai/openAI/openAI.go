@@ -20,20 +20,22 @@ func NewOpenAIHandler(apiKey string) *OpenAIHandler {
 }
 
 func (h *OpenAIHandler) GetSimpleChatCompletion(system string, text string) (string, error) {
+	messages := []openai.ChatCompletionMessage{
+		{
+			Role: openai.ChatMessageRoleSystem,
+			Content: system,
+		},
+		{
+			Role: openai.ChatMessageRoleUser,
+			Content: text,
+		},
+	}
+
 	resp, err := h.client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
 			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role: openai.ChatMessageRoleSystem,
-					Content: system,
-				},
-				{
-					Role: openai.ChatMessageRoleUser,
-					Content: text,
-				},
-			},
+			Messages: messages,
 		},
 	)
 	if err != nil {

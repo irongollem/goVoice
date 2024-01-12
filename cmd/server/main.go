@@ -28,7 +28,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create db handler: %v", err)
 	}
-	aiHandler := ai.InitiateAIProvider(cfg)
+	aiHandler, err := ai.InitiateAIProvider(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create ai handler: %v", err)
+	}
 
 	router := gin.Default()
 	router.GET("/favicon.ico", func(c *gin.Context) {

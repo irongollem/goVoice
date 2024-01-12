@@ -12,14 +12,16 @@ import (
 )
 
 type Config struct {
-	ApiPort            string
-	VoiceAPIAddr       string
-	TelnyxAPIKey       string
-	TelnyxAPIUrl       string
-	TelnyxAppId        string
-	GCPProjectID       string
-	EmailPassword      string
-	OpenAIKey          string
+	ApiPort              string
+	VoiceAPIAddr         string
+	TelnyxAPIKey         string
+	TelnyxAPIUrl         string
+	TelnyxAppId          string
+	GCPProjectID         string
+	EmailPassword        string
+	OpenAIKey            string
+	OpenAIEndpoint       string
+	OpenAIDeploymentName string
 }
 
 func LoadConfig() (*Config, error) {
@@ -38,13 +40,15 @@ func LoadConfigFromEnv() (*Config, error) {
 	}
 
 	return &Config{
-		ApiPort:            ":" + os.Getenv("PORT"),
-		TelnyxAPIKey:       os.Getenv("TELNYX_API_KEY"),
-		TelnyxAPIUrl:       os.Getenv("TELNYX_API_URL"),
-		TelnyxAppId:        os.Getenv("TELNYX_APP_ID"),
-		GCPProjectID:       os.Getenv("GCP_PROJECT_ID"),
-		EmailPassword:      os.Getenv("EMAIL_PASSWORD"),
-		OpenAIKey:          os.Getenv("OPENAI_KEY"),
+		ApiPort:              ":" + os.Getenv("PORT"),
+		TelnyxAPIKey:         os.Getenv("TELNYX_API_KEY"),
+		TelnyxAPIUrl:         os.Getenv("TELNYX_API_URL"),
+		TelnyxAppId:          os.Getenv("TELNYX_APP_ID"),
+		GCPProjectID:         os.Getenv("GCP_PROJECT_ID"),
+		EmailPassword:        os.Getenv("EMAIL_PASSWORD"),
+		OpenAIKey:            os.Getenv("OPENAI_KEY"),
+		OpenAIEndpoint:       os.Getenv("OPENAI_ENDPOINT"),
+		OpenAIDeploymentName: os.Getenv("OPENAI_DEPLOYMENT_NAME"),
 	}, nil
 }
 
@@ -88,6 +92,12 @@ func loadConfigFromSecretManager() (*Config, error) {
 			config.TelnyxAppId = string(result.Payload.Data)
 		case "EMAIL_PASSWORD":
 			config.EmailPassword = string(result.Payload.Data)
+		case "OPENAI_KEY":
+			config.OpenAIKey = string(result.Payload.Data)
+		case "OPENAI_ENDPOINT":
+			config.OpenAIEndpoint = string(result.Payload.Data)
+		case "OPENAI_DEPLOYMENT_NAME":
+			config.OpenAIDeploymentName = string(result.Payload.Data)
 		}
 	}
 
