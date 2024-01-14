@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"goVoice/internal/config"
-	"goVoice/pkg/storage"
 	"log"
 	"net/smtp"
 	"strings"
@@ -13,13 +12,11 @@ import (
 
 type EmailProvider struct {
 	password string
-	storage  storage.StorageProvider
 }
 
-func NewEmailProvider(cfg *config.Config, storage storage.StorageProvider) *EmailProvider {
+func NewEmailProvider(cfg *config.Config) *EmailProvider {
 	return &EmailProvider{
 		password: cfg.EmailPassword,
-		storage:  storage,
 	}
 }
 

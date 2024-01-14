@@ -134,7 +134,6 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 
 	t.ConvCtrl.ProcessRecording(context.Background(), rulesetID, callID, &models.Recording{
 		Url: url,
-		ConversationID: callID,
 		Purpose: state.Purpose,
 	})
 }

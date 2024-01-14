@@ -327,7 +327,7 @@ func (t *Telnyx) GetRecording(recordingId string) (chan *Recording, chan error) 
 }
 
 func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan error) {
-	log.Printf("Getting recording mp3: %s", recording.ID)
+	log.Printf("Getting recording mp3: %s", recording.Purpose)
 	done := make(chan []byte)
 	errChan := make(chan error, 1)
 
@@ -339,8 +339,6 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 			return
 		}
 
-		req.Header.Set("Authorization", "Bearer "+t.APIKey)
-
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			log.Printf("Error getting recording mp3: %v", err)
@@ -348,13 +346,14 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 			return
 		}
 		defer res.Body.Close()
-
+		log.Printf("Response status: %s, downloaded the file, about to read body", res.Status)
 		mp3Bytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			log.Printf("Error reading recording mp3: %v", err)
 			errChan <- err
 			return
 		}
+		log.Printf("Read the body, about to return")
 
 		done <- mp3Bytes
 	}()

@@ -3,6 +3,7 @@ package api
 import (
 	"goVoice/internal/app/conversation"
 	"goVoice/internal/config"
+	"goVoice/internal/email"
 	"goVoice/pkg/ai"
 	"goVoice/pkg/audio"
 	"goVoice/pkg/audio/telnyx"
@@ -25,6 +26,7 @@ func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbPr
 		Storage: storage,
 		DB:      db,
 		AI:      ai,
+		Email:   email.NewEmailProvider(cfg),
 	}
 	client := telnyx.NewTelnyxClient(cfg, convCtrl)
 	// client.SetBucketCredentials(cfg)

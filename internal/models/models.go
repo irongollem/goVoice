@@ -52,8 +52,6 @@ type ClientState struct {
 }
 
 type Recording struct {
-	ID             string `json:"id" firestore:"id"`
 	Url            string `json:"url" firestore:"url"`
-	ConversationID string `json:"conversationId" firestore:"conversationId"`
 	Purpose        string `json:"purpose" firestore:"purpose"`
 }

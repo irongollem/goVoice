@@ -24,7 +24,7 @@ type Controller struct {
 	Storage  storage.StorageProvider
 	DB       db.DbProvider
 	AI       ai.AIProvider
-	email    email.EmailProvider
+	Email    *email.EmailProvider
 }
 
 func (c *Controller) StartConversation(rulesetID string, callID string) {
@@ -145,17 +145,19 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 }
 
 func (c *Controller) EndConversation(ctx context.Context, rulesetID string, callID string, recordingCount int) error {
+	log.Printf("Ending conversation for %v", callID)
 	conversation, err := c.DB.GetConversation(ctx, rulesetID, callID)
 	if err != nil {
 		log.Printf("Error getting responses from database: %v", err)
 		return err
 	}
+	log.Println("Conversation collected, starting email process. Waiting for recordings to finish.")
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	timeout := time.After(5 * time.Minute)
 	
-	var recordings []*models.Recording
+	var recordings []models.Recording
 	Loop:
 		for {
 			select {
@@ -163,7 +165,7 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 					log.Printf("Timeout waiting for conversation to end, continuing incomplete for %v", callID)
 					break Loop
 				case <-ticker.C:
-					recordings, err := c.DB.GetRecordings(ctx, rulesetID, callID)
+					recordings, err = c.DB.GetRecordings(ctx, rulesetID, callID)
 					if err != nil {
 						log.Printf("Error checking if conversation is complete: %v", err)
 						return err
@@ -174,6 +176,8 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 			}
 		}
 
+	log.Println("Conversation complete, sending email.")
+
 	ruleset, err := c.DB.GetRuleSet(ctx, rulesetID)
 	if err != nil {
 		log.Printf("Error getting ruleset from database: %v", err)
@@ -182,28 +186,43 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 
 	body := formatEmailBody(conversation.Responses, rulesetID, ruleset.Title, callID)
 	var attachments [][]byte
+	var attachmentsMutex sync.Mutex
 	var attachmentNames []string
+	var attachmentNamesMutex sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(len(recordings))
 
+	log.Printf("Body formatting done; Downloading %v recordings", len(recordings))
+	log.Println(recordings)
+
 	errChan := make(chan error, len(recordings))
 
+
 	for _, recording := range recordings {
-		go func (recording *models.Recording) {
+		go func (rec *models.Recording) {
 			defer wg.Done()
 			
-			recChan, recErrChan := c.Provider.GetRecordingMp3(recording)
-			recErr := <-recErrChan
-			if err != nil {
-				errChan <- recErr
-				return
+			recChan, recErrChan := c.Provider.GetRecordingMp3(rec)
+
+			select {
+			case recErr := <-recErrChan:
+				if recErr != nil {
+					log.Printf("Error getting recording: %v", recErr)
+					errChan <- recErr
+					return
+				}
+			case file := <-recChan:
+				log.Printf("Got recording for %v added it to attachments", rec.Purpose)
+				attachmentsMutex.Lock()
+				attachmentNamesMutex.Lock()
+				attachments = append(attachments, file)
+				attachmentNames = append(attachmentNames, fmt.Sprintf("%s_%s-%s-%s.mp3", rulesetID, ruleset.Title, callID, rec.Purpose))
+				attachmentsMutex.Unlock()
+				attachmentNamesMutex.Unlock()
 			}
-
-			attachments = append(attachments, <-recChan)
-			attachmentNames = append(attachmentNames, fmt.Sprintf("%s_%s-%s-%s.mp3", rulesetID, ruleset.Title, callID, recording.Purpose))
-		}(recording)
+		}(&recording)
 	}
-
+	log.Println("Waiting for recordings to finish downloading.")
 	wg.Wait()
 
 	close(errChan)
@@ -211,8 +230,8 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 		log.Printf("Error getting recording: %v", err)
 		return err
 	}
-	
-	err = c.email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, attachments, attachmentNames)
+	log.Println("Recordings downloaded, sending email.")
+	err = c.Email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, attachments, attachmentNames)
 	if err != nil {
 		log.Printf("Error sending email: %v", err)
 		return err

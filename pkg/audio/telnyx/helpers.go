@@ -38,14 +38,6 @@ func encodeClientState(state *models.ClientState) (string, error) {
 	return base64.StdEncoding.EncodeToString(encodeState), nil
 }
 
-func convertToRecording(recording *Recording) *models.Recording {
-	return &models.Recording{
-		Url:            recording.DownloadUrls.Mp3,
-		ID:             recording.ID,
-		ConversationID: recording.CallControlID,
-	}
-}
-
 func generateCommandID(CallControlID, funcName string, clientState string) string {
 	idString := CallControlID + funcName + clientState + "v1"
 
