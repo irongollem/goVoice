@@ -145,7 +145,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 		ClientState:         event.Data.Payload.ClientState,
 		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
 		Language:            "nl",
-		TranscriptionEngine: "B",  // A is google, B is telnyx
+		TranscriptionEngine: "A",  // A is google, B is telnyx
 	}
 
 	go func() {

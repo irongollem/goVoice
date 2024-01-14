@@ -39,6 +39,7 @@ func (h *OpenAIHandler) GetSimpleChatCompletion(system string, text string) (str
 		azopenai.ChatCompletionsOptions{
 			Messages:       messages,
 			DeploymentName: &h.deploymentName,
+			ResponseFormat: &azopenai.ChatCompletionsJSONResponseFormat{},
 		},
 		nil,
 	)

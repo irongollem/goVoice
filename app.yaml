@@ -13,5 +13,6 @@ handlers:
 env_variables:
   PORT: 8080
   ENV: production
-  GCP_PROJECT_ID: govoice-406116
+  GCP_PROJECT_ID: assistent-411217
   GIN_MODE: release
+

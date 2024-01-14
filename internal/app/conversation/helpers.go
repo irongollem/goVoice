@@ -31,9 +31,9 @@ func (c *Controller) validateAnswer(answer string, step *models.ConversationStep
 		{ question: <question>, purpose: <purpose>, answer: <answer> }. The answers are transscribed from audio and might be incorrectly transcribed.
 		Also they might be incomplete as the user is taking a short pause.
 		I want you to try and interpret the answer (if possible based on the given question) and correct them where possible. Then I want you to 
-		give an estimate if the answer is complete or not. Return this in the following format:
+		give an estimate if the answer is complete or not. Return this in the following json format:
 		{purpose: <purpose>, answer: <answer>, <complete>: <true/false>} without any padding or fluff so I can
-		directly use it in my system.`
+		directly use it in my system.It's import that you respond in the json format I have given you.`
 
 	question := ai.ValidatedAnswer{
 		Question: step.Text,

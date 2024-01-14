@@ -1,17 +1,17 @@
-steps:
-  - name: "gcr.io/cloud-builders/go"
-    args: ["install", "."]
-  - name: "gcr.io/cloud-builders/go"
-    args: ["build", "cmd/server"]
-    env:
-      [
-        "TELNYX_API_URL=${_TELNYX_API_URL}",
-        "TELNYX_API_KEY=${_TELNYX_API_KEY}",
-        "TELNYX_PUBLIC_KEY=${_TELNYX_PUBLIC_KEY}",
-        "TELNYX_PHONE_NUMBER=${_TELNYX_PHONE_NUMBER}",
-        "GCP_PROJECT_ID=${_GCP_PROJECT_ID}",
-        "EMAIL_PASSWORD=${_EMAIL_PASSWORD}",
+# steps:
+#   - name: "gcr.io/cloud-builders/go"
+#     args: ["install", "."]
+#   - name: "gcr.io/cloud-builders/go"
+#     args: ["build", "cmd/server"]
+#     env:
+#       [
+#         "TELNYX_API_URL=${_TELNYX_API_URL}",
+#         "TELNYX_API_KEY=${_TELNYX_API_KEY}",
+#         "TELNYX_PUBLIC_KEY=${_TELNYX_PUBLIC_KEY}",
+#         "TELNYX_PHONE_NUMBER=${_TELNYX_PHONE_NUMBER}",
+#         "GCP_PROJECT_ID=${_GCP_PROJECT_ID}",
+#         "EMAIL_PASSWORD=${_EMAIL_PASSWORD}",
 
-      ]
-  - name: "gcr.io/cloud-builders/gcloud"
-    args: ["app", "deploy"]
+#       ]
+#   - name: "gcr.io/cloud-builders/gcloud"
+#     args: ["app", "deploy"]
