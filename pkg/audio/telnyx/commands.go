@@ -15,8 +15,11 @@ import (
 	"github.com/avast/retry-go"
 )
 
-func (t *Telnyx) sendCommandToCallCommandsAPI(callControlId string, command string, payload interface{}) (*http.Response, error) {
+func (t *Telnyx) sendPostCommandToCallCommandsAPI(callControlId string, command string, payload interface{}) (*http.Response, error) {
 	return t.sendCommand("POST", payload, "calls", callControlId, "actions", command)
+}
+func (t *Telnyx) sendPutCommandToCallCommandsAPI(callControlId string, command string, payload interface{}) (*http.Response, error) {
+	return t.sendCommand("PUT", payload, "calls", callControlId, "actions", command)
 }
 
 func (t *Telnyx) sendCommand(httpMethod string, payload interface{}, pathParams ...string) (*http.Response, error) {
@@ -120,7 +123,7 @@ func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		res, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "answer", answerPayload)
+		res, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "answer", answerPayload)
 		if err != nil {
 			log.Printf("Error answering call: %v", err)
 			errChan <- err
@@ -149,7 +152,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_start", transcriptionPayload)
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_start", transcriptionPayload)
 		if err != nil {
 			log.Printf("Error starting transcription: %v", err)
 			errChan <- err
@@ -171,7 +174,7 @@ func (t *Telnyx) stopTranscription(event Event) (chan bool, chan error) {
 	}
 	
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_stop", payload)
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_stop", payload)
 		if err != nil {
 			log.Printf("Error stopping transcription: %v", err)
 			errChan <- err
@@ -194,6 +197,9 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 		newState = event.Data.Payload.ClientState
 	} else {
 		state.RecordingCount++
+		if state.RecordingPurpose == "" {
+			state.RecordingPurpose = state.Purpose
+		}
 		newState, err = encodeClientState(state)
 		if err != nil {
 			log.Printf("Error encoding client state: %v", err)
@@ -210,7 +216,7 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_start", recordingPayload)
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_start", recordingPayload)
 		if err != nil {
 			log.Printf("Error starting recording: %v", err)
 			errChan <- err
@@ -232,7 +238,7 @@ func (t *Telnyx) stopRecording(event Event) (chan bool, chan error) {
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_stop", payload)
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_stop", payload)
 		if err != nil {
 			log.Printf("Error stopping recording: %v", err)
 			errChan <- err
@@ -260,7 +266,7 @@ func (t *Telnyx) SpeakText(CallControlID string, text string, clientState *model
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(CallControlID, command, speakPayload)
+		_, err := t.sendPostCommandToCallCommandsAPI(CallControlID, command, speakPayload)
 		if err != nil {
 			log.Printf("Error starting speak: %v", err)
 			errChan <- err
@@ -277,7 +283,7 @@ func (t *Telnyx) EndCall(callID string) (chan bool, chan error) {
 	errChan := make(chan error, 1)
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(callID, "hangup", nil)
+		_, err := t.sendPostCommandToCallCommandsAPI(callID, "hangup", nil)
 		if err != nil {
 			log.Printf("Error ending call: %v", err)
 			errChan <- err
@@ -375,9 +381,37 @@ func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *mod
 	}
 
 	go func() {
-		_, err := t.sendCommandToCallCommandsAPI(callControlID, "playback_start", payload)
+		_, err := t.sendPostCommandToCallCommandsAPI(callControlID, "playback_start", payload)
 		if err != nil {
 			log.Printf("Error playing audio url: %v", err)
+			errChan <- err
+		}
+		done <- true
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) UpdateState(callControlID string, clientState *models.ClientState) (chan bool, chan error) {
+	log.Printf("Updating state for call %s", callControlID)
+	done := make(chan bool)
+	errChan := make(chan error, 1)
+
+	state, err := encodeClientState(clientState)
+	if err != nil {
+		log.Printf("Error encoding client state: %v", err)
+		errChan <- err
+		return done, errChan
+	}
+
+	payload := &UpdateClientStatePayload{
+		ClientState: state,
+	}
+
+	go func() {
+		_, err := t.sendPutCommandToCallCommandsAPI(callControlID, "update_client_state", payload)
+		if err != nil {
+			log.Printf("Error updating state: %v", err)
 			errChan <- err
 		}
 		done <- true

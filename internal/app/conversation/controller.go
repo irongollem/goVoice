@@ -45,7 +45,7 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 	clientState := models.ClientState{
 		RulesetID:   rulesetID,
 		CurrentStep: 0,
-		Purpose: 	 opener.Purpose,
+		Purpose:     opener.Purpose,
 	}
 	doneChan, errChan := c.broadcastNextStep(callID, &clientState, opener)
 
@@ -77,12 +77,13 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 			return
 		}
 	}
-	foo, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
+	validatedAnswer, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
 	if err != nil {
-		log.Printf("Error validating answer: %v", err)
+		log.Printf("Error validating answer, storing transcript: %v", err)
 		c.storeTranscription(ctx, callID, state, rules, transcript)
 	} else {
-		c.storeTranscription(ctx, callID, state, rules, foo.Answer)
+		log.Println("Validating succesful, storing validated answer")
+		c.storeTranscription(ctx, callID, state, rules, validatedAnswer.Answer)
 	}
 	step, err := c.getResponse(rules, state, transcript)
 	if err != nil {
@@ -92,11 +93,13 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 	}
 
 	nextState := models.ClientState{
-		RulesetID:   state.RulesetID,
-		CurrentStep: state.CurrentStep + 1,
-		Purpose: 	 rules.Steps[state.CurrentStep+1].Purpose,
-		RecordingCount: state.RecordingCount,
+		RulesetID:        state.RulesetID,
+		CurrentStep:      state.CurrentStep + 1,
+		Purpose:          rules.Steps[state.CurrentStep+1].Purpose,
+		RecordingCount:   state.RecordingCount,
+		RecordingPurpose: state.RecordingPurpose,
 	}
+
 	done, errChan := c.broadcastNextStep(callID, &nextState, step)
 	select {
 	case <-done:
@@ -156,25 +159,25 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 	defer ticker.Stop()
 
 	timeout := time.After(5 * time.Minute)
-	
+
 	var recordings []models.Recording
-	Loop:
-		for {
-			select {
-				case <-timeout:
-					log.Printf("Timeout waiting for conversation to end, continuing incomplete for %v", callID)
-					break Loop
-				case <-ticker.C:
-					recordings, err = c.DB.GetRecordings(ctx, rulesetID, callID)
-					if err != nil {
-						log.Printf("Error checking if conversation is complete: %v", err)
-						return err
-					}
-					if recordings != nil && len(recordings) == recordingCount {
-						break Loop
-					}
+Loop:
+	for {
+		select {
+		case <-timeout:
+			log.Printf("Timeout waiting for conversation to end, continuing incomplete for %v", callID)
+			break Loop
+		case <-ticker.C:
+			recordings, err = c.DB.GetRecordings(ctx, rulesetID, callID)
+			if err != nil {
+				log.Printf("Error checking if conversation is complete: %v", err)
+				return err
+			}
+			if recordings != nil && len(recordings) == recordingCount {
+				break Loop
 			}
 		}
+	}
 
 	log.Println("Conversation complete, sending email.")
 
@@ -197,11 +200,10 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 
 	errChan := make(chan error, len(recordings))
 
-
 	for _, recording := range recordings {
-		go func (rec *models.Recording) {
+		go func(rec *models.Recording) {
 			defer wg.Done()
-			
+
 			recChan, recErrChan := c.Provider.GetRecordingMp3(rec)
 
 			select {
@@ -242,7 +244,7 @@ func (c *Controller) EndConversation(ctx context.Context, rulesetID string, call
 		log.Printf("Error deleting conversation from database: %v", err)
 		return err
 	}
-	
+
 	return nil
 }
 

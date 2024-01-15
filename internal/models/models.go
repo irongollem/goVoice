@@ -45,13 +45,14 @@ type Conversation struct {
  * any state we want. Feel free to adjust this as needed.
  */
 type ClientState struct {
-	RulesetID      string `json:"rulesetId"`
-	Purpose        string `json:"purpose"`
-	CurrentStep    int    `json:"currentStep"`
-	RecordingCount int    `json:"recordingCount"`
+	RulesetID        string `json:"rulesetId"`
+	Purpose          string `json:"purpose"`
+	CurrentStep      int    `json:"currentStep"`
+	RecordingCount   int    `json:"recordingCount"`
+	RecordingPurpose string `json:"recordingState"`
 }
 
 type Recording struct {
-	Url            string `json:"url" firestore:"url"`
-	Purpose        string `json:"purpose" firestore:"purpose"`
+	Url     string `json:"url" firestore:"url"`
+	Purpose string `json:"purpose" firestore:"purpose"`
 }

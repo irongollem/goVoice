@@ -42,7 +42,7 @@ func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject
 
 	// Setup text
 	message.WriteString("\n--MULTIPART-MIXED-BOUNDARY\n")
-	message.WriteString("Content-Type: text/plain; charset=\"utf-8\"\n")
+	message.WriteString("Content-Type: text/html; charset=\"utf-8\"\n")
 	message.WriteString("Content-Transfer-Encoding: 7bit\n")
 	message.WriteString("\n" + body + "\n")
 

@@ -53,31 +53,35 @@ func (t *Telnyx) HandleWebHook(c *gin.Context) {
 
 	callType := event.Data.EventType
 
-	switch callType {
-	case "call.initiated":
-		t.answerProcedure(c, event)
-	case "call.answered":
-		t.startCallProcedure(c, event)
-	case "call.hangup":
-		t.hangupProcedure(c, event)
-	case "call.speak.ended":
-		t.speakEndedProcedure(c, event)
-	case "call.speak.started":
-		t.speakStartedProcedure(c, event)
-	case "call.recording.saved":
-		t.recordingSavedProcedure(c, event)
-	case "call.recording.error":
-		t.recordingErrorProcedure(c, event)
-	case "call.transcription":
-		t.transcriptionProcedure(c, event)
-	case "call.playback.started":
-		t.playbackStartedProcedure(c, event)
-	case "call.playback.ended":
-		t.playbackEndedProcedure(c, event)
-	default:
-		log.Printf("Unknown event type: %s received", callType)
-		c.Status(http.StatusOK)
-	}
+	// respond to the incoming hook immediately, then process the event in the background
+	c.Status(http.StatusOK)
+	log.Printf("Event type: %s received; starting procedure", callType)
+	go func() {
+		switch callType {
+		case "call.initiated":
+			t.answerProcedure(c, event)
+		case "call.answered":
+			t.startCallProcedure(c, event)
+		case "call.hangup":
+			t.hangupProcedure(c, event)
+		case "call.speak.ended":
+			t.speakEndedProcedure(c, event)
+		case "call.speak.started":
+			t.speakStartedProcedure(c, event)
+		case "call.recording.saved":
+			t.recordingSavedProcedure(c, event)
+		case "call.recording.error":
+			t.recordingErrorProcedure(c, event)
+		case "call.transcription":
+			t.transcriptionProcedure(c, event)
+		case "call.playback.started":
+			t.playbackStartedProcedure(c, event)
+		case "call.playback.ended":
+			t.playbackEndedProcedure(c, event)
+		default:
+			log.Printf("Unknown event type: %s received", callType)
+		}
+	}()
 }
 
 func (t *Telnyx) SetBucketCredentials(cfg *config.Config) error {

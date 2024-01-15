@@ -4,7 +4,6 @@ import (
 	"context"
 	"goVoice/internal/models"
 	"log"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,17 +16,10 @@ import (
  */
 
 func (t *Telnyx) answerProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
-	log.Printf("Answering call: %v", event)
-
 	t.answerCall(event)
 }
 
 func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
-	log.Printf("Call started: %v", event)
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
@@ -37,10 +29,6 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 }
 
 func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
-	log.Printf("Transcription received: %v", event)
-
 	ctx := context.Background()
 	transcriptionData := event.Data.Payload.TranscriptionData
 	callID := event.Data.Payload.CallControlID
@@ -53,10 +41,6 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 }
 
 func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
-	log.Printf("Call ended: %v", event)
-
 	callID := event.Data.Payload.CallControlID
 	state, err := decodeClientState(event.Data.Payload.ClientState)
 	if err != nil {
@@ -72,55 +56,31 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callID, state.RecordingCount)
 }
 
-/**
-* For now we don't do anything with the speak started event but are
-* required to respond to the incoming hook
-*/
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	t.stopTranscription(event)
 	t.stopRecording(event)
 	log.Print("Speak started")
 }
-/**
-* For now we don't do anything with the playback started event but are
-* required to respond to the incoming hook
-*/
+
 func (t *Telnyx) playbackStartedProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	t.stopTranscription(event)
 	t.stopRecording(event)
 	log.Print("playback started")
 }
 
-/**
-* For now we don't do anything with the speak ended event but are
-* required to respond to the incoming hook
-*/
 func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	t.startTranscription(event)
 	t.startRecording(event)
 	log.Print("Speak ended")
 }
-/**
-* For now we don't do anything with the speak ended event but are
-* required to respond to the incoming hook
-*/
+
 func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	t.startTranscription(event)
 	t.startRecording(event)
 	log.Print("playback ended")
 }
 
 func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	log.Printf("Recording schema: %+v", event.Data)
 
 	state, err := decodeClientState(event.Data.Payload.ClientState)
@@ -133,13 +93,20 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	url := event.Data.Payload.RecordingUrls.Mp3
 
 	t.ConvCtrl.ProcessRecording(context.Background(), rulesetID, callID, &models.Recording{
-		Url: url,
-		Purpose: state.Purpose,
+		Url:     url,
+		Purpose: state.RecordingPurpose,
 	})
+	if state.RecordingPurpose != state.Purpose {
+		/* We update it now because recording processing can overlap. This way we make sure
+		 * that the recording purpose is always set to the correct value.
+		 */
+		state.RecordingPurpose = state.Purpose
+		t.UpdateState(callID, state)
+	} else {
+		log.Println("Recording came in before transcription, recording files potentially incorrectly named")
+	}
 }
 
 func (t *Telnyx) recordingErrorProcedure(c *gin.Context, event Event) {
-	// respond to the incoming hook immediately
-	c.Status(http.StatusOK)
 	log.Printf("Recording error: %v", event.Data.Payload.Reason)
 }

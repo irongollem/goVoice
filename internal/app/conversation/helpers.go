@@ -20,9 +20,14 @@ func (c *Controller) storeTranscription(ctx context.Context, callID string, stat
 
 func formatEmailBody(responses map[string]string, rulesetID string, rulesetTitle string, callID string) string {
 	var sb strings.Builder
+	sb.WriteString("<table>\n")
+	sb.WriteString(fmt.Sprintf("<tr><td>RulesetID</td><td>%s</td></tr>\n", rulesetID))
+	sb.WriteString(fmt.Sprintf("<tr><td>Title</td><td>%s</td></tr>\n", rulesetTitle))
+	sb.WriteString(fmt.Sprintf("<tr><td>CallID</td><td>%s</td></tr>\n", callID))
 	for purpose, answer := range responses {
-		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\n", rulesetID, rulesetTitle, callID, purpose, answer))
+		sb.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>\n", purpose, answer))
 	}
+	sb.WriteString("</table>")
 	return sb.String()
 }
 
@@ -30,15 +35,15 @@ func (c *Controller) validateAnswer(answer string, step *models.ConversationStep
 	system := `You are a questionaire validator who is given answers in Dutch (quite possibly with a Frisian dialect) in the following format
 		{ question: <question>, purpose: <purpose>, answer: <answer> }. The answers are transscribed from audio and might be incorrectly transcribed.
 		Also they might be incomplete as the user is taking a short pause.
-		I want you to try and interpret the answer (if possible based on the given question) and correct them where possible. Then I want you to 
+		I want you to try and interpret the answer in relation to the question and correct them where possible. Then I want you to 
 		give an estimate if the answer is complete or not. Return this in the following json format:
 		{purpose: <purpose>, answer: <answer>, <complete>: <true/false>} without any padding or fluff so I can
-		directly use it in my system.It's import that you respond in the json format I have given you.`
+		directly use it in my system. It's essential that you respond in the json format I have given you.`
 
 	question := ai.ValidatedAnswer{
 		Question: step.Text,
-		Purpose: step.Purpose,
-		Answer: answer,
+		Purpose:  step.Purpose,
+		Answer:   answer,
 	}
 	questionJSON, err := json.Marshal(question)
 	if err != nil {
@@ -59,13 +64,13 @@ func (c *Controller) validateAnswer(answer string, step *models.ConversationStep
 		return nil, err
 	}
 
-	return &validatedAnswer, nil   
+	return &validatedAnswer, nil
 }
 
-func(c *Controller) broadcastNextStep (conversationID string, state *models.ClientState, step models.ConversationStep) (chan bool, chan error) {
+func (c *Controller) broadcastNextStep(conversationID string, state *models.ClientState, step models.ConversationStep) (chan bool, chan error) {
 	var doneChan chan bool
 	var errChan chan error
-	if (step.AudioURL != "") {
+	if step.AudioURL != "" {
 		c.Provider.PlayAudioUrl(conversationID, step.AudioURL, state)
 	} else if step.Prompt != nil {
 		// TODO: implement speak from prompt
