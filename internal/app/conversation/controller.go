@@ -48,7 +48,7 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 		Purpose:     opener.Purpose,
 		TotalSteps:  len(ruleSet.Steps),
 	}
-	doneChan, errChan := c.broadcastNextStep(callID, &clientState, opener)
+	doneChan, errChan := c.broadcastNextStep(callID, &clientState, &opener)
 
 	select {
 	case <-doneChan:
@@ -96,7 +96,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 		Purpose:     rules.Steps[state.CurrentStep+1].Purpose,
 	}
 
-	c.broadcastNextStep(callID, &nextState, step)
+	c.broadcastNextStep(callID, &nextState, &step)
 }
 
 func (c *Controller) getRules(rulesetID string) (*models.ConversationRuleSet, error) {

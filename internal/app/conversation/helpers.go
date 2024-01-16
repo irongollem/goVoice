@@ -67,12 +67,12 @@ func (c *Controller) validateAnswer(answer string, step *models.ConversationStep
 	return &validatedAnswer, nil
 }
 
-func (c *Controller) broadcastNextStep(conversationID string, state *models.ClientState, step models.ConversationStep) (chan bool, chan error) {
+func (c *Controller) broadcastNextStep(conversationID string, state *models.ClientState, step *models.ConversationStep) (chan bool, chan error) {
 	log.Println("Broadcasting next step")
 	var doneChan chan bool
 	var errChan chan error
 	if step.AudioURL != "" {
-		c.CallProvider.PlayAudioUrl(conversationID, step.AudioURL, state)
+		c.CallProvider.PlayAudioUrl(conversationID, step, state)
 	} else if step.Prompt != nil {
 		// TODO: implement speak from prompt
 	} else {

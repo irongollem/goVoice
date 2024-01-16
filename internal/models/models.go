@@ -19,11 +19,12 @@ type ConversationRuleSet struct {
 }
 
 type ConversationStep struct {
-	UserType string  `json:"userType" firestore:"userType"`
-	Text     string  `json:"text" firestore:"text"`
-	Prompt   *Prompt `json:"prompt" firestore:"prompt"`
-	Purpose  string  `json:"purpose" firestore:"purpose"`
-	AudioURL string  `json:"audioUrl" firestore:"audioUrl"`
+	UserType      string  `json:"userType" firestore:"userType"`
+	Text          string  `json:"text" firestore:"text"`
+	Prompt        *Prompt `json:"prompt" firestore:"prompt"`
+	Purpose       string  `json:"purpose" firestore:"purpose"`
+	AudioURL      string  `json:"audioUrl" firestore:"audioUrl"`
+	AudioDuration int     `json:"audioDuration" firestore:"audioDuration"`
 }
 
 type ConversationStepResponse struct {

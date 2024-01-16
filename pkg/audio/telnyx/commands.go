@@ -139,20 +139,22 @@ func (t *Telnyx) answerCall(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
-func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
-	log.Printf("Starting transcription for call %s", event.Data.Payload.CallControlID)
+func (t *Telnyx) startTranscription(callControlID string, clientState *models.ClientState) (chan bool, chan error) {
+	log.Printf("Starting transcription for call %s", callControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
+	state, _ := encodeClientState(clientState)
+
 	transcriptionPayload := &TranscriptionPayload{
-		ClientState:         event.Data.Payload.ClientState,
-		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
+		ClientState:         state,
+		CommandID:           generateCommandID(callControlID, "transcription_start", state),
 		Language:            "nl",
 		TranscriptionEngine: "A", // A is google, B is telnyx
 	}
 
 	go func() {
-		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_start", transcriptionPayload)
+		_, err := t.sendPostCommandToCallCommandsAPI(callControlID, "transcription_start", transcriptionPayload)
 		if err != nil {
 			log.Printf("Error starting transcription: %v", err)
 			errChan <- err
@@ -163,18 +165,20 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
-func (t *Telnyx) stopTranscription(event Event) (chan bool, chan error) {
-	log.Printf("Stopping transcription for call %s", event.Data.Payload.CallControlID)
+func (t *Telnyx) stopTranscription(callControlID string, clientState *models.ClientState) (chan bool, chan error) {
+	log.Printf("Stopping transcription for call %s", callControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
+	state, _ := encodeClientState(clientState)
+
 	payload := &SimplePayload{
-		ClientState: event.Data.Payload.ClientState,
-		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "transcription_stop", event.Data.Payload.ClientState),
+		ClientState: state,
+		CommandID:   generateCommandID(callControlID, "transcription_stop", state),
 	}
 
 	go func() {
-		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_stop", payload)
+		_, err := t.sendPostCommandToCallCommandsAPI(callControlID, "transcription_stop", payload)
 		if err != nil {
 			log.Printf("Error stopping transcription: %v", err)
 			errChan <- err
@@ -293,6 +297,7 @@ func (t *Telnyx) SpeakText(CallControlID string, text string, clientState *model
 	}
 
 	go func() {
+		// FIXME time transcriptions, see playAudioURL
 		_, err := t.sendPostCommandToCallCommandsAPI(CallControlID, command, speakPayload)
 		if err != nil {
 			log.Printf("Error starting speak: %v", err)
@@ -394,8 +399,8 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 	return done, errChan
 }
 
-func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *models.ClientState) (chan bool, chan error) {
-	log.Printf("Playing audio url: %s", url)
+func (t *Telnyx) PlayAudioUrl(callControlID string, step *models.ConversationStep, clientState *models.ClientState) (chan bool, chan error) {
+	log.Printf("Playing audio url: %s", step.AudioURL)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
@@ -403,18 +408,23 @@ func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *mod
 
 	payload := &PlayAudio{
 		CommandID:   generateCommandID(callControlID, "playAudio", state),
-		AudioUrl:    url,
+		AudioUrl:    step.AudioURL,
 		ClientState: state,
 	}
 
-	go func() {
+	go func(callControlID string, clientState *models.ClientState, step *models.ConversationStep, done chan bool, errChan chan error) {
+		t.stopTranscription(callControlID, clientState)
 		_, err := t.sendPostCommandToCallCommandsAPI(callControlID, "playback_start", payload)
 		if err != nil {
 			log.Printf("Error playing audio url: %v", err)
 			errChan <- err
 		}
+		// We pause transcription for the duration of the audio and then resume it
+		time.Sleep(time.Duration(step.AudioDuration - 1) * time.Second)
+		t.startTranscription(callControlID, clientState)
+
 		done <- true
-	}()
+	}(callControlID, clientState, step, done, errChan)
 
 	return done, errChan
 }

@@ -57,12 +57,10 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 }
 
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
-	t.stopTranscription(event)
 	log.Print("Speak started")
 }
 
 func (t *Telnyx) playbackStartedProcedure(c *gin.Context, event Event) {
-	t.stopTranscription(event)
 	log.Print("playback started")
 }
 
@@ -78,8 +76,6 @@ func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 		t.EndCall(event.Data.Payload.CallControlID)
 		return
 	}
-
-	t.startTranscription(event)
 }
 
 func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
@@ -94,8 +90,6 @@ func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
 		t.EndCall(event.Data.Payload.CallControlID)
 		return
 	}
-
-	t.startTranscription(event)
 }
 
 func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
