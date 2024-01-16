@@ -24,7 +24,7 @@ func (t *Telnyx) startCallProcedure(c *gin.Context, event Event) {
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
-
+	t.startRecording(event)
 	t.ConvCtrl.StartConversation(state.RulesetID, event.Data.Payload.CallControlID)
 }
 
@@ -46,7 +46,7 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
-
+	t.stopRecording(event)
 	ctx := context.Background()
 	err = t.ConvCtrl.DB.SetConversationDone(ctx, state.RulesetID, callID)
 	if err != nil {
@@ -58,13 +58,11 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 	t.stopTranscription(event)
-	t.pauseRecording(event)
 	log.Print("Speak started")
 }
 
 func (t *Telnyx) playbackStartedProcedure(c *gin.Context, event Event) {
 	t.stopTranscription(event)
-	t.pauseRecording(event)
 	log.Print("playback started")
 }
 
@@ -82,11 +80,7 @@ func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 	}
 
 	t.startTranscription(event)
-	if state.CurrentStep == 0 {
-		t.startRecording(event)
-	} else {
-		t.resumeRecording(event)
-	}
+	
 	log.Print("Speak ended")
 }
 
@@ -104,11 +98,6 @@ func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
 	}
 
 	t.startTranscription(event)
-	if state.CurrentStep == 0 {
-		t.startRecording(event)
-	} else {
-		t.resumeRecording(event)
-	}
 	log.Print("playback ended")
 }
 

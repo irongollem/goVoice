@@ -79,17 +79,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 		}
 	}
 
-	go func() {
-		// validating takes forever so moved this into a separate goroutine
-		validatedAnswer, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
-		if err != nil {
-			log.Printf("Error validating answer, storing transcript: %v", err)
-			c.storeTranscription(ctx, callID, state, rules, transcript)
-		} else {
-			log.Println("Validating succesful, storing validated answer")
-			c.storeTranscription(ctx, callID, state, rules, validatedAnswer.Answer)
-		}
-	}()
+	go c.validateAndStoreAnswer(ctx, transcript, callID, state, rules)
 
 	step, err := c.getResponse(rules, state, transcript)
 	if err != nil {
@@ -106,16 +96,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 		Purpose:     rules.Steps[state.CurrentStep+1].Purpose,
 	}
 
-	done, errChan := c.broadcastNextStep(callID, &nextState, step)
-	select {
-	case <-done:
-		return
-	case err := <-errChan:
-		log.Printf("Error sending response to caller: %v", err)
-		// TODO: do we abandon the call?
-		// and what do we do with the state and recording?
-		// do we save it to the database and send it to the client?
-	}
+	c.broadcastNextStep(callID, &nextState, step)
 }
 
 func (c *Controller) getRules(rulesetID string) (*models.ConversationRuleSet, error) {

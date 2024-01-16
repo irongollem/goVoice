@@ -81,3 +81,14 @@ func (c *Controller) broadcastNextStep(conversationID string, state *models.Clie
 
 	return doneChan, errChan
 }
+
+func (c *Controller) validateAndStoreAnswer(ctx context.Context, transcript string, callID string, state *models.ClientState, rules *models.ConversationRuleSet) {
+	validatedAnswer, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
+		if err != nil {
+			log.Printf("Error validating answer, storing transcript: %v", err)
+			c.storeTranscription(ctx, callID, state, rules, transcript)
+		} else {
+			log.Println("Validating succesful, storing validated answer")
+			c.storeTranscription(ctx, callID, state, rules, validatedAnswer.Answer)
+		}
+}
