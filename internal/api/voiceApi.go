@@ -30,7 +30,7 @@ func NewVoiceAPI(cfg *config.Config, storage storage.StorageProvider, db db.DbPr
 	}
 	client := telnyx.NewTelnyxClient(cfg, convCtrl)
 	// client.SetBucketCredentials(cfg)
-	convCtrl.Provider = client
+	convCtrl.CallProvider = client
 
 	api.routes(client)
 	return api

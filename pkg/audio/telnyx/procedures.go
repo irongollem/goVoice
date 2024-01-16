@@ -53,30 +53,62 @@ func (t *Telnyx) hangupProcedure(c *gin.Context, event Event) {
 		log.Printf("Error setting conversation done: %v", err)
 		return // TODO: in its current state the conversation will be stuck in the DB
 	}
-	t.ConvCtrl.EndConversation(ctx, state.RulesetID, callID, state.RecordingCount)
+	t.ConvCtrl.EndConversation(ctx, state, callID)
 }
 
 func (t *Telnyx) speakStartedProcedure(c *gin.Context, event Event) {
 	t.stopTranscription(event)
-	t.stopRecording(event)
+	t.pauseRecording(event)
 	log.Print("Speak started")
 }
 
 func (t *Telnyx) playbackStartedProcedure(c *gin.Context, event Event) {
 	t.stopTranscription(event)
-	t.stopRecording(event)
+	t.pauseRecording(event)
 	log.Print("playback started")
 }
 
 func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
+	state, err := decodeClientState(event.Data.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v. Ending call, possibly prematurely", err)
+		t.EndCall(event.Data.Payload.CallControlID)
+		return
+	}
+	if state.CurrentStep == state.TotalSteps-1 {
+		log.Printf("Playback ended and conversation is done, ending call")
+		t.EndCall(event.Data.Payload.CallControlID)
+		return
+	}
+
 	t.startTranscription(event)
-	t.startRecording(event)
+	if state.CurrentStep == 0 {
+		t.startRecording(event)
+	} else {
+		t.resumeRecording(event)
+	}
 	log.Print("Speak ended")
 }
 
 func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
+	state, err := decodeClientState(event.Data.Payload.ClientState)
+	if err != nil {
+		log.Printf("Error decoding client state: %v. Ending call, possibly prematurely", err)
+		t.EndCall(event.Data.Payload.CallControlID)
+		return
+	}
+	if state.CurrentStep == state.TotalSteps-1 {
+		log.Printf("Playback ended and conversation is done, ending call")
+		t.EndCall(event.Data.Payload.CallControlID)
+		return
+	}
+
 	t.startTranscription(event)
-	t.startRecording(event)
+	if state.CurrentStep == 0 {
+		t.startRecording(event)
+	} else {
+		t.resumeRecording(event)
+	}
 	log.Print("playback ended")
 }
 
@@ -93,18 +125,8 @@ func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
 	url := event.Data.Payload.RecordingUrls.Mp3
 
 	t.ConvCtrl.ProcessRecording(context.Background(), rulesetID, callID, &models.Recording{
-		Url:     url,
-		Purpose: state.RecordingPurpose,
+		Url: url,
 	})
-	if state.RecordingPurpose != state.Purpose {
-		/* We update it now because recording processing can overlap. This way we make sure
-		 * that the recording purpose is always set to the correct value.
-		 */
-		state.RecordingPurpose = state.Purpose
-		t.UpdateState(callID, state)
-	} else {
-		log.Println("Recording came in before transcription, recording files potentially incorrectly named")
-	}
 }
 
 func (t *Telnyx) recordingErrorProcedure(c *gin.Context, event Event) {

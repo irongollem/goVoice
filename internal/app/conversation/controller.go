@@ -20,11 +20,11 @@ import (
 // LLM controller to determine a response. The response is then sent to the audio
 // processor to be converted to audio and sent back to the caller.
 type Controller struct {
-	Provider audio.CallProvider
-	Storage  storage.StorageProvider
-	DB       db.DbProvider
-	AI       ai.AIProvider
-	Email    *email.EmailProvider
+	CallProvider audio.CallProvider
+	Storage      storage.StorageProvider
+	DB           db.DbProvider
+	AI           ai.AIProvider
+	Email        *email.EmailProvider
 }
 
 func (c *Controller) StartConversation(rulesetID string, callID string) {
@@ -46,6 +46,7 @@ func (c *Controller) StartConversation(rulesetID string, callID string) {
 		RulesetID:   rulesetID,
 		CurrentStep: 0,
 		Purpose:     opener.Purpose,
+		TotalSteps:  len(ruleSet.Steps),
 	}
 	doneChan, errChan := c.broadcastNextStep(callID, &clientState, opener)
 
@@ -68,7 +69,7 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 	// in case people are still talking after the conversation is over
 	wasFinalStep := len(rules.Steps) == state.CurrentStep-1
 	if wasFinalStep {
-		done, errChan := c.Provider.EndCall(callID)
+		done, errChan := c.CallProvider.EndCall(callID)
 		select {
 		case <-done:
 			return
@@ -77,27 +78,32 @@ func (c *Controller) ProcessTranscription(ctx context.Context, callID string, tr
 			return
 		}
 	}
-	validatedAnswer, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
-	if err != nil {
-		log.Printf("Error validating answer, storing transcript: %v", err)
-		c.storeTranscription(ctx, callID, state, rules, transcript)
-	} else {
-		log.Println("Validating succesful, storing validated answer")
-		c.storeTranscription(ctx, callID, state, rules, validatedAnswer.Answer)
-	}
+
+	go func() {
+		// validating takes forever so moved this into a separate goroutine
+		validatedAnswer, err := c.validateAnswer(transcript, &rules.Steps[state.CurrentStep])
+		if err != nil {
+			log.Printf("Error validating answer, storing transcript: %v", err)
+			c.storeTranscription(ctx, callID, state, rules, transcript)
+		} else {
+			log.Println("Validating succesful, storing validated answer")
+			c.storeTranscription(ctx, callID, state, rules, validatedAnswer.Answer)
+		}
+	}()
+
 	step, err := c.getResponse(rules, state, transcript)
 	if err != nil {
 		log.Printf("Error getting response for client: %v", err)
 		// TODO tell the callee that something went wrong and handle gracefully
+		c.CallProvider.EndCall(callID)
 		return
 	}
 
 	nextState := models.ClientState{
-		RulesetID:        state.RulesetID,
-		CurrentStep:      state.CurrentStep + 1,
-		Purpose:          rules.Steps[state.CurrentStep+1].Purpose,
-		RecordingCount:   state.RecordingCount,
-		RecordingPurpose: state.RecordingPurpose,
+		RulesetID:   state.RulesetID,
+		CurrentStep: state.CurrentStep + 1,
+		TotalSteps:  state.TotalSteps,
+		Purpose:     rules.Steps[state.CurrentStep+1].Purpose,
 	}
 
 	done, errChan := c.broadcastNextStep(callID, &nextState, step)
@@ -147,39 +153,25 @@ func getSimpleResponse(rules *models.ConversationRuleSet, state *models.ClientSt
 	}
 }
 
-func (c *Controller) EndConversation(ctx context.Context, rulesetID string, callID string, recordingCount int) error {
+func (c *Controller) EndConversation(ctx context.Context, state *models.ClientState, callID string) error {
 	log.Printf("Ending conversation for %v", callID)
+	rulesetID := state.RulesetID
+
+	time.Sleep(10 * time.Second)
+
 	conversation, err := c.DB.GetConversation(ctx, rulesetID, callID)
 	if err != nil {
-		log.Printf("Error getting responses from database: %v", err)
+		log.Printf("Error getting conversation from database: %v", err)
 		return err
 	}
-	log.Println("Conversation collected, starting email process. Waiting for recordings to finish.")
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
 
-	timeout := time.After(5 * time.Minute)
-
-	var recordings []models.Recording
-Loop:
-	for {
-		select {
-		case <-timeout:
-			log.Printf("Timeout waiting for conversation to end, continuing incomplete for %v", callID)
-			break Loop
-		case <-ticker.C:
-			recordings, err = c.DB.GetRecordings(ctx, rulesetID, callID)
-			if err != nil {
-				log.Printf("Error checking if conversation is complete: %v", err)
-				return err
-			}
-			if recordings != nil && len(recordings) == recordingCount {
-				break Loop
-			}
-		}
+	recordings, err := c.DB.GetRecordings(ctx, rulesetID, callID)
+	if err != nil {
+		log.Printf("Error checking if conversation is complete: %v", err)
+		return err
 	}
 
-	log.Println("Conversation complete, sending email.")
+	log.Println("Assuming conversation is complete, sending email.")
 
 	ruleset, err := c.DB.GetRuleSet(ctx, rulesetID)
 	if err != nil {
@@ -200,11 +192,11 @@ Loop:
 
 	errChan := make(chan error, len(recordings))
 
-	for _, recording := range recordings {
-		go func(rec *models.Recording) {
+	for i, recording := range recordings {
+		go func(rec *models.Recording, i int) {
 			defer wg.Done()
 
-			recChan, recErrChan := c.Provider.GetRecordingMp3(rec)
+			recChan, recErrChan := c.CallProvider.GetRecordingMp3(rec)
 
 			select {
 			case recErr := <-recErrChan:
@@ -214,15 +206,15 @@ Loop:
 					return
 				}
 			case file := <-recChan:
-				log.Printf("Got recording for %v added it to attachments", rec.Purpose)
+				log.Printf("Got recording for %v added it to attachments", i)
 				attachmentsMutex.Lock()
 				attachmentNamesMutex.Lock()
 				attachments = append(attachments, file)
-				attachmentNames = append(attachmentNames, fmt.Sprintf("%s_%s-%s-%s.mp3", rulesetID, ruleset.Title, callID, rec.Purpose))
+				attachmentNames = append(attachmentNames, fmt.Sprintf("%s-%s-recording-%d.mp3", ruleset.Title, callID, i))
 				attachmentsMutex.Unlock()
 				attachmentNamesMutex.Unlock()
 			}
-		}(&recording)
+		}(&recording, i)
 	}
 	log.Println("Waiting for recordings to finish downloading.")
 	wg.Wait()
@@ -238,7 +230,6 @@ Loop:
 		log.Printf("Error sending email: %v", err)
 		return err
 	}
-
 	err = c.DB.DeleteConversation(ctx, rulesetID, callID)
 	if err != nil {
 		log.Printf("Error deleting conversation from database: %v", err)

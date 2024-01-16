@@ -148,7 +148,7 @@ func (t *Telnyx) startTranscription(event Event) (chan bool, chan error) {
 		ClientState:         event.Data.Payload.ClientState,
 		CommandID:           generateCommandID(event.Data.Payload.CallControlID, "transcription_start", event.Data.Payload.ClientState),
 		Language:            "nl",
-		TranscriptionEngine: "A",  // A is google, B is telnyx
+		TranscriptionEngine: "A", // A is google, B is telnyx
 	}
 
 	go func() {
@@ -172,7 +172,7 @@ func (t *Telnyx) stopTranscription(event Event) (chan bool, chan error) {
 		ClientState: event.Data.Payload.ClientState,
 		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "transcription_stop", event.Data.Payload.ClientState),
 	}
-	
+
 	go func() {
 		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "transcription_stop", payload)
 		if err != nil {
@@ -190,25 +190,8 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
-	var newState string
-	state, err := decodeClientState(event.Data.Payload.ClientState)
-	if err != nil {
-		log.Printf("Error decoding client state: %v", err)
-		newState = event.Data.Payload.ClientState
-	} else {
-		state.RecordingCount++
-		if state.RecordingPurpose == "" {
-			state.RecordingPurpose = state.Purpose
-		}
-		newState, err = encodeClientState(state)
-		if err != nil {
-			log.Printf("Error encoding client state: %v", err)
-			newState = event.Data.Payload.ClientState
-		}
-	}
-
 	recordingPayload := &RecordStartPayload{
-		ClientState: newState,
+		ClientState: event.Data.Payload.ClientState,
 		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_start", event.Data.Payload.ClientState),
 		Format:      "mp3",
 		Channels:    "single",
@@ -227,20 +210,64 @@ func (t *Telnyx) startRecording(event Event) (chan bool, chan error) {
 	return done, errChan
 }
 
-func (t *Telnyx) stopRecording(event Event) (chan bool, chan error) {
-	log.Printf("Stopping recording for call %s", event.Data.Payload.CallControlID)
+// func (t *Telnyx) stopRecording(event Event) (chan bool, chan error) {
+// 	log.Printf("Stopping recording for call %s", event.Data.Payload.CallControlID)
+// 	done := make(chan bool)
+// 	errChan := make(chan error, 1)
+
+// 	payload := &SimplePayload{
+// 		ClientState: event.Data.Payload.ClientState,
+// 		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_stop", event.Data.Payload.ClientState),
+// 	}
+
+// 	go func() {
+// 		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_stop", payload)
+// 		if err != nil {
+// 			log.Printf("Error stopping recording: %v", err)
+// 			errChan <- err
+// 		}
+// 		done <- true
+// 	}()
+
+// 	return done, errChan
+// }
+
+func (t *Telnyx) pauseRecording(event Event) (chan bool, chan error) {
+	log.Printf("Pausing recording for call %s", event.Data.Payload.CallControlID)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
 
 	payload := &SimplePayload{
 		ClientState: event.Data.Payload.ClientState,
-		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_stop", event.Data.Payload.ClientState),
+		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_pause", event.Data.Payload.ClientState),
 	}
 
 	go func() {
-		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_stop", payload)
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_pause", payload)
 		if err != nil {
-			log.Printf("Error stopping recording: %v", err)
+			log.Printf("Error pausing recording: %v", err)
+			errChan <- err
+		}
+		done <- true
+	}()
+
+	return done, errChan
+}
+
+func (t *Telnyx) resumeRecording(event Event) (chan bool, chan error) {
+	log.Printf("Resuming recording for call %s", event.Data.Payload.CallControlID)
+	done := make(chan bool)
+	errChan := make(chan error, 1)
+
+	payload := &SimplePayload{
+		ClientState: event.Data.Payload.ClientState,
+		CommandID:   generateCommandID(event.Data.Payload.CallControlID, "record_resume", event.Data.Payload.ClientState),
+	}
+
+	go func() {
+		_, err := t.sendPostCommandToCallCommandsAPI(event.Data.Payload.CallControlID, "record_resume", payload)
+		if err != nil {
+			log.Printf("Error resuming recording: %v", err)
 			errChan <- err
 		}
 		done <- true
@@ -333,7 +360,7 @@ func (t *Telnyx) GetRecording(recordingId string) (chan *Recording, chan error) 
 }
 
 func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan error) {
-	log.Printf("Getting recording mp3: %s", recording.Purpose)
+	log.Printf("Getting recording mp3: %s", recording.Url)
 	done := make(chan []byte)
 	errChan := make(chan error, 1)
 
@@ -367,7 +394,7 @@ func (t *Telnyx) GetRecordingMp3(recording *models.Recording) (chan []byte, chan
 	return done, errChan
 }
 
-func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *models.ClientState)(chan bool, chan error) {
+func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *models.ClientState) (chan bool, chan error) {
 	log.Printf("Playing audio url: %s", url)
 	done := make(chan bool)
 	errChan := make(chan error, 1)
@@ -376,7 +403,7 @@ func (t *Telnyx) PlayAudioUrl(callControlID string, url string, clientState *mod
 
 	payload := &PlayAudio{
 		CommandID:   generateCommandID(callControlID, "playAudio", state),
-		AudioUrl: url,
+		AudioUrl:    url,
 		ClientState: state,
 	}
 
