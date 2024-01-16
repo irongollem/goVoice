@@ -8,7 +8,7 @@ import (
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"cloud.google.com/go/secretmanager/apiv1/secretmanagerpb"
-	// "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -25,20 +25,20 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	// if os.Getenv("ENV") == "production" {
-	// 	return loadConfigFromSecretManager()
-	// } else {
+	if os.Getenv("ENV") == "production" {
+		return loadConfigFromSecretManager()
+	} else {
 		return LoadConfigFromEnv()
-	// }
+	}
 }
 
 
 func LoadConfigFromEnv() (*Config, error) {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatalf("Failed to load .env file: %v", err)
-	// 	return nil, err
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Failed to load .env file: %v", err)
+		return nil, err
+	}
 
 	return &Config{
 		ApiPort:              ":" + os.Getenv("PORT"),
@@ -71,6 +71,9 @@ func loadConfigFromSecretManager() (*Config, error) {
 		"TELNYX_API_URL",
 		"TELNYX_APP_ID",
 		"EMAIL_PASSWORD",
+		"OPENAI_KEY",
+		"OPENAI_ENDPOINT",
+		"OPENAI_DEPLOYMENT_NAME",
 	}
 
 	for _, secretName := range secretNames {
