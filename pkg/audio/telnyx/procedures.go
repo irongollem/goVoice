@@ -80,8 +80,6 @@ func (t *Telnyx) speakEndedProcedure(c *gin.Context, event Event) {
 	}
 
 	t.startTranscription(event)
-	
-	log.Print("Speak ended")
 }
 
 func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
@@ -98,7 +96,6 @@ func (t *Telnyx) playbackEndedProcedure(c *gin.Context, event Event) {
 	}
 
 	t.startTranscription(event)
-	log.Print("playback ended")
 }
 
 func (t *Telnyx) recordingSavedProcedure(c *gin.Context, event Event) {
