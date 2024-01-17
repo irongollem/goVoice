@@ -20,12 +20,16 @@ func (c *Controller) storeTranscription(ctx context.Context, callID string, stat
 
 func formatEmailBody(responses map[string]string, rulesetID string, rulesetTitle string, callID string) string {
 	var sb strings.Builder
-	sb.WriteString("<table>\n")
-	sb.WriteString(fmt.Sprintf("<tr><td>RulesetID</td><td>%s</td></tr>\n", rulesetID))
-	sb.WriteString(fmt.Sprintf("<tr><td>Title</td><td>%s</td></tr>\n", rulesetTitle))
-	sb.WriteString(fmt.Sprintf("<tr><td>CallID</td><td>%s</td></tr>\n", callID))
+	sb.WriteString("<table style='width: 100%; border-collapse: collapse;'>\n")
+	sb.WriteString(fmt.Sprintf("<tr style='background-color: #f2f2f2;'><td style='border: 1px solid #ddd; padding: 8px;'>CallID</td><td style='border: 1px solid #ddd; padding: 8px;'>%s</td></tr>\n", callID))
+	i := 0
 	for purpose, answer := range responses {
-		sb.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>\n", purpose, answer))
+			color := "#f2f2f2"
+			if i%2 == 0 {
+					color = "#ddf"
+			}
+			sb.WriteString(fmt.Sprintf("<tr style='background-color: %s;'><td style='border: 1px solid #ddd; padding: 8px;'>%s</td><td style='border: 1px solid #ddd; padding: 8px;'>%s</td></tr>\n", color, purpose, answer))
+			i++
 	}
 	sb.WriteString("</table>")
 	return sb.String()
