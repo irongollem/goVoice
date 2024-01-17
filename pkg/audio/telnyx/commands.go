@@ -413,16 +413,21 @@ func (t *Telnyx) PlayAudioUrl(callControlID string, step *models.ConversationSte
 	}
 
 	go func(callControlID string, clientState *models.ClientState, step *models.ConversationStep, done chan bool, errChan chan error) {
-		t.stopTranscription(callControlID, clientState)
+		if step.AudioDuration > 3 {
+			t.stopTranscription(callControlID, clientState)
+		}
+		log.Printf("Stopping transcription for purpose %s", step.Purpose)
 		_, err := t.sendPostCommandToCallCommandsAPI(callControlID, "playback_start", payload)
 		if err != nil {
 			log.Printf("Error playing audio url: %v", err)
 			errChan <- err
 		}
-		// We pause transcription for the duration of the audio and then resume it
-		time.Sleep(time.Duration(step.AudioDuration - 1) * time.Second)
-		t.startTranscription(callControlID, clientState)
-
+		if step.AudioDuration > 3 {
+			// We pause transcription for the duration of the audio and then resume it
+			time.Sleep(time.Duration(step.AudioDuration) * time.Second)
+			log.Printf("Resuming transcription for purpose %s", step.Purpose)
+			t.startTranscription(callControlID, clientState)
+		}
 		done <- true
 	}(callControlID, clientState, step, done, errChan)
 

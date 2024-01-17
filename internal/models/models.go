@@ -23,8 +23,8 @@ type ConversationStep struct {
 	Text          string  `json:"text" firestore:"text"`
 	Prompt        *Prompt `json:"prompt" firestore:"prompt"`
 	Purpose       string  `json:"purpose" firestore:"purpose"`
-	AudioURL      string  `json:"audioUrl" firestore:"audioUrl"`
 	AudioDuration int     `json:"audioDuration" firestore:"audioDuration"`
+	AudioURL      string  `json:"audioUrl" firestore:"audioUrl"`
 }
 
 type ConversationStepResponse struct {

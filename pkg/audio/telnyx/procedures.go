@@ -36,6 +36,7 @@ func (t *Telnyx) transcriptionProcedure(c *gin.Context, event Event) {
 	if err != nil {
 		log.Printf("Error decoding client state: %v", err)
 	}
+	log.Printf("transcription received for %s", state.Purpose)
 
 	t.ConvCtrl.ProcessTranscription(ctx, callID, transcriptionData.Transcript, state)
 }
