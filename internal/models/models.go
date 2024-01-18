@@ -13,7 +13,7 @@ type ConversationRuleSet struct {
 	ID     string  `json:"id" firestore:"id"`
 	Title  string  `json:"title" firestore:"title"`
 	Simple bool    `json:"simple" firestore:"simple"`
-	Client *Client `json:"client" firestore:"client"`
+	Clients []*Client `json:"clients" firestore:"clients"`
 
 	Steps []ConversationStep `json:"steps" firestore:"steps"`
 }

@@ -206,7 +206,11 @@ func (c *Controller) EndConversation(ctx context.Context, state *models.ClientSt
 		return err
 	}
 	log.Println("Recordings downloaded, sending email.")
-	err = c.Email.SendEmailWithAttachment(ctx, ruleset.Client.Email, ruleset.Title, body, attachments, attachmentNames)
+	var emails []string
+	for _, client := range ruleset.Clients {
+		emails = append(emails, client.Email)
+	}
+	err = c.Email.SendEmailWithAttachment(ctx, emails, ruleset.Title, body, attachments, attachmentNames)
 	if err != nil {
 		log.Printf("Error sending email: %v", err)
 		return err

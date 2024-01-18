@@ -19,7 +19,7 @@ func NewEmailProvider(cfg *config.Config) *EmailProvider {
 	}
 }
 
-func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject, body string, attachments [][]byte, attachmentNames []string) error {
+func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to []string, subject string, body string, attachments [][]byte, attachmentNames []string) error {
 	from := "noreply@smartaisolutions.nl"
 	smtpHost := "smtp.gmail.com"
 
@@ -28,7 +28,7 @@ func (p *EmailProvider) SendEmailWithAttachment(ctx context.Context, to, subject
 	m := gomail.NewMessage()
 
 	m.SetHeader("From", from)
-	m.SetHeader("To", to)
+	m.SetHeader("To", to...)
 	m.SetHeader("Subject", subject)
 
 	m.SetBody("text/html", body)
